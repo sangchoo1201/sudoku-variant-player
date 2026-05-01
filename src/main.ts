@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+const CellStateSchema = z.object({
+    number: z.number().nullable(),
+    corner: z.record(z.number(), z.boolean()),
+    center: z.record(z.number(), z.boolean()),
+});
+
+const BoardChangeSchema = z.array(
+    z.object({
+        row: z.number(),
+        col: z.number(),
+        before: CellStateSchema,
+        after: CellStateSchema,
+    })
+);
+
+const SolvingStateSchema = z.object({
+    board: z.array(z.array(CellStateSchema).min(1)).min(1),
+    undo: z.array(BoardChangeSchema),
+    redo: z.array(BoardChangeSchema),
+});
+
 const PuzzleDataSchema = z.object({
     id: z.string(),
     difficulty: z.number(),
@@ -9,8 +30,9 @@ const PuzzleDataSchema = z.object({
             id: z.string(),
             params: z.record(z.string(), z.unknown()),
         }),
-    )
-})
+    ),
+    solving_state: SolvingStateSchema.optional()
+});
 
 type PuzzleData = z.infer<typeof PuzzleDataSchema>;
 
