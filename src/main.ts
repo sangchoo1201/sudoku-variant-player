@@ -53,21 +53,21 @@ function json_decode_or_null(json: string): any {
 }
 
 function parse_data(code: string | null): object {
-    if (code == null) { return default_data; }
+    if (code == null) { return {}; }
     const base64_data = decodeURIComponent(code);
     const json_data = base64_decode_or_null(base64_data);
-    if (json_data == null) { return default_data; }
+    if (json_data == null) { return {}; }
     const data = json_decode_or_null(json_data);
-    if (data == null || !(data instanceof Object)) { return default_data; }
+    if (data == null || !(data instanceof Object)) { return {}; }
     return data;
 }
 
 const query_string = window.location.search;
 const url_params = new URLSearchParams(query_string);
 const code = url_params.get('code');
-
 const parsed_data = parse_data(code);
 const puzzle_data_result = PuzzleDataSchema.safeParse(parsed_data);
 const puzzle_data: PuzzleData = puzzle_data_result.success ? puzzle_data_result.data : default_data;
 
 console.log(puzzle_data);
+console.log(puzzle_data_result.success);
