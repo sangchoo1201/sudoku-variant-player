@@ -1,48 +1,12 @@
-import { z } from "zod";
+import { type PuzzleData, PuzzleDataSchema } from "./schema.ts"
 
-const CellStateSchema = z.object({
-    number: z.number().nullable(),
-    corner: z.record(z.number(), z.boolean()),
-    center: z.record(z.number(), z.boolean()),
-});
-
-const BoardChangeSchema = z.array(
-    z.object({
-        row: z.number(),
-        col: z.number(),
-        before: CellStateSchema,
-        after: CellStateSchema,
-    })
-);
-
-const SolvingStateSchema = z.object({
-    board: z.array(z.array(CellStateSchema).min(1)).min(1),
-    undo: z.array(BoardChangeSchema),
-    redo: z.array(BoardChangeSchema),
-});
-
-const PuzzleDataSchema = z.object({
-    id: z.string(),
-    difficulty: z.number(),
-    board: z.array(z.array(z.number()).min(1)).min(1),
-    rules: z.array(
-        z.object({
-            id: z.string(),
-            params: z.record(z.string(), z.unknown()),
-        }),
-    ),
-    solving_state: SolvingStateSchema.optional()
-});
-
-type PuzzleData = z.infer<typeof PuzzleDataSchema>;
-
-const default_data: PuzzleData = {
+export const default_data: PuzzleData = {
     id: "#00000",
     difficulty: 0,
     board: Array.from({ length: 9 }, () => Array(9).fill(0)),
     rules: [
         {
-            id: "Sudoku",
+            id: "[Sudoku]",
             params: {},
         },
         {
@@ -88,8 +52,8 @@ const query_string = window.location.search;
 const url_params = new URLSearchParams(query_string);
 const code = url_params.get('code');
 const parsed_data = parse_data(code);
-const puzzle_data_result = PuzzleDataSchema.safeParse(parsed_data);
-const puzzle_data: PuzzleData = puzzle_data_result.success ? puzzle_data_result.data : default_data;
+const result = PuzzleDataSchema.safeParse(parsed_data);
+const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 
 console.log(puzzle_data);
-console.log(puzzle_data_result.success);
+console.log(result.success);
