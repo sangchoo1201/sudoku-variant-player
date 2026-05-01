@@ -2,25 +2,44 @@ import { z } from "zod";
 
 const PositionSchema = z.tuple([z.number(), z.number()]);
 
-const CellStateSchema = z.object({
+const FixedCellStateSchema = z.object({
+    fixed: z.literal(true),
+    number: z.number(),
+});
+
+const EmptyCellStateSchema = z.object({
+    fixed: z.literal(false),
     number: z.number().nullable(),
     corner: z.record(z.number(), z.boolean()),
     center: z.record(z.number(), z.boolean()),
 });
 
+const CellStateSchema = z.discriminatedUnion("fixed", [
+    FixedCellStateSchema,
+    EmptyCellStateSchema,
+]);
+
 const BoardChangeSchema = z.array(
     z.object({
         pos: PositionSchema,
-        before: CellStateSchema,
-        after: CellStateSchema,
+        before: EmptyCellStateSchema,
+        after: EmptyCellStateSchema,
     })
 );
 
+const BoardStateSchema = z.array(
+    z.array(CellStateSchema).min(1)
+).min(1);
+
+export type BoardState = z.infer<typeof BoardStateSchema>;
+
 const SolvingStateSchema = z.object({
-    board: z.array(z.array(CellStateSchema).min(1)).min(1),
+    board: BoardStateSchema,
     undo: z.array(BoardChangeSchema),
     redo: z.array(BoardChangeSchema),
 });
+
+export type SolvingState = z.infer<typeof SolvingStateSchema>;
 
 const SudokuRule = z.object({
     id: z.literal("[Sudoku]"),

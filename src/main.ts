@@ -1,4 +1,4 @@
-import { type PuzzleData, PuzzleDataSchema } from "./schema.ts"
+import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts"
 
 export const default_data: PuzzleData = {
     id: "#00000",
@@ -48,12 +48,46 @@ function parse_data(code: string | null): object {
     return data;
 }
 
+function generate_default_solving_state(puzzle_data: PuzzleData): SolvingState {
+    const board_state: BoardState = []
+    for (const [i, row] of puzzle_data.board.entries()) {
+        board_state.push([])
+        for (const [_, value] of row.entries()) {
+            if (value == 0) {
+                board_state[i].push({
+                    fixed: false,
+                    number: null,
+                    corner: Object.fromEntries(
+                        Array.from({ length: 9 }, (_, i) => [i + 1, false])
+                    ),
+                    center: Object.fromEntries(
+                        Array.from({ length: 9 }, (_, i) => [i + 1, false])
+                    ),
+                });
+            } else {
+                board_state[i].push({
+                    fixed: true,
+                    number: value,
+                });
+            }
+        }
+    }
+
+    return {
+        board: board_state,
+        undo: [],
+        redo: [],
+    }
+}
+
 const query_string = window.location.search;
 const url_params = new URLSearchParams(query_string);
 const code = url_params.get('code');
 const parsed_data = parse_data(code);
 const result = PuzzleDataSchema.safeParse(parsed_data);
 const puzzle_data: PuzzleData = result.success ? result.data : default_data;
+const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
 console.log(puzzle_data);
+console.log(solving_state);
 console.log(result.success);
