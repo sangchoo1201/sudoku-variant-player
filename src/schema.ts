@@ -78,7 +78,13 @@ const MetroRule = z.object({
 const SequenceRule = z.object({
     id: z.literal("[SQ]"),
     params: z.object({
-        hints: z.array(z.tuple([z.string(), z.number(), z.array(z.number())])),
+        hints: z.array(
+            z.tuple([
+                z.enum(["row", "col"]),
+                z.number(),
+                z.array(z.number())
+            ])
+        ),
     }),
 });
 
