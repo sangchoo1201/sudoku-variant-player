@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const PositionSchema = z.tuple([z.number(), z.number()]);
 
+export type Position = z.infer<typeof PositionSchema>;
+
 const FixedCellStateSchema = z.object({
     fixed: z.literal(true),
     number: z.number(),
@@ -10,8 +12,8 @@ const FixedCellStateSchema = z.object({
 const EmptyCellStateSchema = z.object({
     fixed: z.literal(false),
     number: z.number().nullable(),
-    corner: z.record(z.number(), z.boolean()),
-    center: z.record(z.number(), z.boolean()),
+    corner: z.record(z.string(), z.literal(true)),
+    center: z.record(z.string(), z.literal(true)),
 });
 
 const CellStateSchema = z.discriminatedUnion("fixed", [
@@ -28,8 +30,8 @@ const BoardChangeSchema = z.array(
 );
 
 const BoardStateSchema = z.array(
-    z.array(CellStateSchema).min(1)
-).min(1);
+    z.array(CellStateSchema).length(9)
+).length(9);
 
 export type BoardState = z.infer<typeof BoardStateSchema>;
 
@@ -41,89 +43,141 @@ const SolvingStateSchema = z.object({
 
 export type SolvingState = z.infer<typeof SolvingStateSchema>;
 
-const SudokuRule = z.object({
+const SudokuRuleSchema = z.object({
     id: z.literal("[Sudoku]"),
     params: z.object({}),
 });
 
-const RowRule = z.object({
+const RowRuleSchema = z.object({
     id: z.literal("[R]"),
     params: z.object({}),
 });
 
-const ColumnRule = z.object({
+const ColumnRuleSchema = z.object({
     id: z.literal("[C]"),
     params: z.object({}),
 });
 
-const BoxRule = z.object({
+const BoxRuleSchema = z.object({
     id: z.literal("[B]"),
     params: z.object({}),
 });
 
-const DistantRule = z.object({
+const DistantRuleSchema = z.object({
     id: z.literal("[DT]"),
     params: z.object({}),
 });
 
-const SegmentRule = z.object({
+const SegmentRuleSchema = z.object({
     id: z.literal("[SG]"),
     params: z.object({
         regions: z.array(z.array(PositionSchema)),
     }),
 });
 
-const LinkRule = z.object({
+export type SegmentRule = z.infer<typeof SegmentRuleSchema>;
+
+const LinkRuleSchema = z.object({
     id: z.literal("[LK]"),
     params: z.object({
-        edges: z.tuple([PositionSchema, PositionSchema]),
+        edges: z.array(
+            z.tuple([PositionSchema, PositionSchema])
+        ),
     }),
 });
 
-const LotusRule = z.object({
+export type LinkRule = z.infer<typeof LinkRuleSchema>;
+
+const LotusRuleSchema = z.object({
     id: z.literal("[LO]"),
     params: z.object({
         cells: z.array(PositionSchema),
     }),
 });
 
-const MetroRule = z.object({
+export type LotusRule = z.infer<typeof LotusRuleSchema>;
+
+const MetroRuleSchema = z.object({
     id: z.literal("[MR]"),
     params: z.object({
         metros: z.array(z.array(PositionSchema)),
     }),
 });
 
-const SequenceRule = z.object({
+export type MetroRule = z.infer<typeof MetroRuleSchema>;
+
+const SequenceRuleSchema = z.object({
     id: z.literal("[SQ]"),
     params: z.object({
         hints: z.array(
             z.tuple([
-                z.enum(["row", "col"]),
+                z.enum(["ROW", "COL"]),
                 z.number(),
-                z.array(z.number())
+                z.array(z.number()),
             ])
         ),
     }),
 });
 
+export type SequenceRule = z.infer<typeof SequenceRuleSchema>;
+
+const QuantumRuleSchema = z.object({
+    id: z.literal("[QT]"),
+    params: z.object({
+        hints: z.array(
+            z.tuple([
+                z.enum(["ROW", "COL"]),
+                z.number(),
+                z.tuple([z.number(), z.number()]),
+            ])
+        ),
+    }),
+});
+
+export type QuantumRule = z.infer<typeof QuantumRuleSchema>;
+
+const RangeRuleSchema = z.object({
+    id: z.literal("[RG]"),
+    params: z.object({
+        hints: z.array(
+            z.tuple([
+                z.enum(["ROW", "COL"]),
+                z.number(),
+                z.number(),
+            ])
+        ),
+    }),
+});
+
+export type RangeRule = z.infer<typeof RangeRuleSchema>;
+
+const QuadRuleSchema = z.object({
+    id: z.literal("[QD]"),
+    params: z.object({})
+})
+
 const RuleSchema = z.discriminatedUnion("id", [
-    SudokuRule,
-    RowRule,
-    ColumnRule,
-    BoxRule,
-    DistantRule,
-    SegmentRule,
-    LinkRule,
-    LotusRule,
-    MetroRule,
-    SequenceRule,
+    SudokuRuleSchema,
+    RowRuleSchema,
+    ColumnRuleSchema,
+    BoxRuleSchema,
+    DistantRuleSchema,
+    SegmentRuleSchema,
+    LinkRuleSchema,
+    LotusRuleSchema,
+    MetroRuleSchema,
+    SequenceRuleSchema,
+    QuantumRuleSchema,
+    RangeRuleSchema,
+    QuadRuleSchema,
 ]);
+
+export type Rule = z.infer<typeof RuleSchema>;
 
 export const PuzzleDataSchema = z.object({
     id: z.string(),
     difficulty: z.number(),
-    board: z.array(z.array(z.number()).min(1)).min(1),
+    board: z.array(z.array(z.number()).length(9)).length(9),
     rules: z.array(RuleSchema),
     solving_state: SolvingStateSchema.optional()
 });

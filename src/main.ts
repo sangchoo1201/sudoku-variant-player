@@ -1,6 +1,6 @@
-import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts"
+import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
 
-export const default_data: PuzzleData = {
+const default_data: PuzzleData = {
     id: "#00000",
     difficulty: 0,
     board: Array.from({ length: 9 }, () => Array(9).fill(0)),
@@ -57,12 +57,8 @@ function generate_default_solving_state(puzzle_data: PuzzleData): SolvingState {
                 board_state[i].push({
                     fixed: false,
                     number: null,
-                    corner: Object.fromEntries(
-                        Array.from({ length: 9 }, (_, i) => [i + 1, false])
-                    ),
-                    center: Object.fromEntries(
-                        Array.from({ length: 9 }, (_, i) => [i + 1, false])
-                    ),
+                    corner: {},
+                    center: {},
                 });
             } else {
                 board_state[i].push({
