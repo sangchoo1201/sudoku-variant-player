@@ -4,7 +4,7 @@ import {
     type SegmentRule,
     type SolvingState,
     type LinkRule,
-    type LotusRule, type MetroRule
+    type LotusRule, type MetroRule, type SequenceRule, type QuantumRule, type RangeRule
 } from "./schema.ts";
 
 type RuleCheckingResult = [true, []] | [false, Position[]];
@@ -12,10 +12,46 @@ type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
 
-const generic_duplicate_check = function (
+function create_error_collector() {
+    const errors: Position[] = [];
+    const unique = new Set<number>();
+    const encode = ([r, c]: Position) => r * 100 + c;
+
+    return {
+        add(pos: Position) {
+            const key = encode(pos);
+            if (unique.has(key)) return;
+
+            unique.add(key);
+            errors.push(pos);
+        },
+
+        add_all(positions: Position[]) {
+            for (const pos of positions) {
+                this.add(pos);
+            }
+        },
+
+        result(): RuleCheckingResult {
+            return errors.length ? [false, errors] : [true, []];
+        }
+    }
+}
+
+function generate_get_pos(direction: "ROW" | "COL", index: number): (x: number) => [number, number] {
+    switch (direction) {
+        case "ROW":
+            return (x: number) => [index, x];
+        case "COL":
+            return (x: number) => [x, index];
+    }
+}
+
+function generic_duplicate_check (
     solving_state: SolvingState, map: CoordinateMappingFunction
 ): RuleCheckingResult {
-    let errors: Position[] = [];
+    const errors = create_error_collector();
+
     for (let i = 0; i < 9; i++) {
         let numbers = Object.fromEntries(
             Array.from({ length: 9 }, (_, i) => [i + 1, []])
@@ -28,12 +64,39 @@ const generic_duplicate_check = function (
         }
         for (let n = 1; n <= 9; n++) {
             if (numbers[n].length >= 2) {
-                numbers[n].forEach(j => errors.push(map(i, j)));
+                numbers[n].forEach(j => errors.add(map(i, j)));
             }
         }
     }
-    return errors.length ? [false, errors] : [true, []]
-};
+    return errors.result();
+}
+
+function generic_pair_check (
+    solving_state: SolvingState, neighbors: [number, number][]
+): RuleCheckingResult {
+    const get_neighbors = (r: number, c: number) => {
+        return neighbors
+            .map(([dr, dc]) => [r + dr, c + dc] as const)
+            .filter(([r, c]) => r >= 0 && r < 9 && c >= 0 && c < 9);
+    }
+
+    const errors = create_error_collector();
+
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            const cell_data = solving_state.board[r][c];
+            if (cell_data.number === null) continue;
+
+            for (const [nr, nc] of get_neighbors(r, c)) {
+                if (cell_data.number === solving_state.board[nr][nc].number) {
+                    errors.add([r, c]);
+                }
+            }
+        }
+    }
+
+    return errors.result();
+}
 
 const row_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
     generic_duplicate_check(solving_state, (row, index) => [row, index]);
@@ -51,57 +114,32 @@ const segment_check: RuleCheckingFunction<SegmentRule> = (solving_state: Solving
         rule.params.regions[region][index]
     );
 
-const generic_pair_check = function (
-    solving_state: SolvingState, neighbors: [number, number][]
-): RuleCheckingResult {
-    const get_neighbors = (r: number, c: number) => {
-        return neighbors
-            .map(([dr, dc]) => [r + dr, c + dc] as const)
-            .filter(([r, c]) => r >= 0 && r < 9 && c >= 0 && c < 9);
-    }
-
-    let errors: Position[] = [];
-
-    for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-            const cell_data = solving_state.board[r][c];
-            if (cell_data.number === null) continue;
-
-            for (const [nr, nc] of get_neighbors(r, c)) {
-                if (cell_data.number === solving_state.board[nr][nc].number) {
-                    errors.push([r, c]);
-                }
-            }
-        }
-    }
-
-    return errors.length ? [false, errors] : [true, []];
-}
-
 const distant_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
     generic_pair_check(solving_state, [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]);
 
 const link_check: RuleCheckingFunction<LinkRule> = function (
     solving_state: SolvingState, rule: LinkRule
 ): RuleCheckingResult {
-    let errors: Position[] = []
+    const errors = create_error_collector();
+
     for (const [[r1, c1], [r2, c2]] of rule.params.edges) {
         const cell1 = solving_state.board[r1][c1];
         const cell2 = solving_state.board[r2][c2];
         if (cell1.number === null || cell2.number === null) continue;
         if (Math.abs(cell1.number - cell2.number) != 1) {
-            errors.push([r1, c1]);
-            errors.push([r2, c2]);
+            errors.add([r1, c1]);
+            errors.add([r2, c2]);
         }
     }
 
-    return errors.length ? [false, errors] : [true, []];
+    return errors.result();
 }
 
 const lotus_check: RuleCheckingFunction<LotusRule> = function (
     solving_state: SolvingState, rule: LotusRule
 ): RuleCheckingResult {
-    let errors: Position[] = []
+    const errors = create_error_collector();
+
     for (const [r, c] of rule.params.cells) {
         const value = solving_state.board[r][c].number;
         if (value === null) continue;
@@ -110,8 +148,7 @@ const lotus_check: RuleCheckingFunction<LotusRule> = function (
             .map(([dr, dc]): [number, number] => [r + dr, c + dc])
             .filter(([nr, nc]) => nr >= 0 && nr < 9 && nc >= 0 && nc < 9);
 
-        let has_greater = false;
-        let has_smaller = false;
+        let has_greater = false, has_smaller = false;
 
         for (const [nr, nc] of neighbors) {
             const num = solving_state.board[nr][nc].number;
@@ -121,19 +158,20 @@ const lotus_check: RuleCheckingFunction<LotusRule> = function (
             if (num < value) has_smaller = true;
 
             if (has_greater && has_smaller) {
-                errors.push([r, c]);
+                errors.add([r, c]);
                 break;
             }
         }
     }
 
-    return errors.length ? [false, errors] : [true, []];
+    return errors.result();
 }
 
 const metro_check: RuleCheckingFunction<MetroRule> = function (
     solving_state: SolvingState, rule: MetroRule
 ): RuleCheckingResult {
-    let errors: Position[] = []
+    const errors = create_error_collector();
+
     for (const metro of rule.params.metros) {
         const nums: number[] = [];
 
@@ -144,16 +182,143 @@ const metro_check: RuleCheckingFunction<MetroRule> = function (
         }
 
         if (new Set(nums).size !== nums.length) {
-            errors.push(...metro);
+            errors.add_all(metro);
             continue;
         }
 
-        const min = Math.min(...nums);
-        const max = Math.max(...nums);
+        const min = Math.min(...nums), max = Math.max(...nums);
         if (max - min + 1 > metro.length) {
-            errors.push(...metro);
+            errors.add_all(metro);
         }
     }
 
-    return errors.length ? [false, errors] : [true, []];
+    return errors.result();
+}
+
+const sequence_check: RuleCheckingFunction<SequenceRule> = function (
+    solving_state: SolvingState, rule: SequenceRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [direction, index, sequence] of rule.params.hints) {
+        const get_pos = generate_get_pos(direction, index);
+
+        const line: number[] = [];
+        for (let i = 0; i < 9; i++) {
+            const [r, c] = get_pos(i);
+            const v = solving_state.board[r][c].number;
+            if (v !== null) line.push(v);
+        }
+
+        if (line.length < sequence.length) continue;
+
+        let j = 0;
+        for (let i = 0; i < line.length && j < sequence.length; i++) {
+            if (line[i] == sequence[j]) j++;
+        }
+
+        if (j !== sequence.length) {
+            errors.add(get_pos(9));
+        }
+    }
+
+    return errors.result();
+}
+
+const quantum_check: RuleCheckingFunction<QuantumRule> = function (
+    solving_state: SolvingState, rule: QuantumRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [direction, index, [a, b]] of rule.params.hints) {
+        const get_pos = generate_get_pos(direction, index);
+        const [r1, c1] = get_pos(a - 1), [r2, c2] = get_pos(b - 1);
+        const v1 = solving_state.board[r1][c1].number;
+        const v2 = solving_state.board[r2][c2].number;
+        if (v1 === null || v2 === null) continue;
+
+        const cond1 = v1 == b, cond2 = v2 == a;
+        if (cond1 === cond2) {
+            errors.add(get_pos(a - 1));
+            errors.add(get_pos(b - 1));
+            errors.add(get_pos(9));
+        }
+    }
+
+    return errors.result();
+}
+
+const range_check: RuleCheckingFunction<RangeRule> = function (
+    solving_state: SolvingState, rule: RangeRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [direction, index, distance] of rule.params.hints) {
+        const get_pos = generate_get_pos(direction, index);
+        const one_pos: number[] = [], nine_pos: number[] = [];
+
+        for (let i = 0; i < 9; i++) {
+            const [r, c] = get_pos(i);
+            const v = solving_state.board[r][c].number;
+            if (v === 1) one_pos.push(i);
+            if (v === 9) nine_pos.push(i);
+        }
+
+        for (const one of one_pos) {
+            for (const nine of nine_pos) {
+                if (Math.abs(one - nine) === distance) continue;
+                errors.add(get_pos(one));
+                errors.add(get_pos(nine));
+                errors.add(get_pos(9));
+            }
+        }
+    }
+
+    return errors.result();
+}
+
+const quad_check: PureCheckingFunction = function (
+    solving_state: SolvingState,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const positions: Position[] = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]];
+            let has_even = false, has_odd = false;
+
+            for (const [i, j] of positions) {
+                const v = solving_state.board[i][j].number;
+                if (v === null) {
+                    has_even = has_odd = true;
+                    break;
+                }
+                if (v % 2 === 0) has_even = true;
+                if (v % 2 === 1) has_odd = true;
+            }
+
+            if (!(has_even && has_odd)) {
+                errors.add_all(positions);
+            }
+        }
+    }
+
+    return errors.result();
+}
+
+if (import.meta.env.DEV) {
+    (globalThis as any).rule = {
+        row_check,
+        column_check,
+        box_check,
+        segment_check,
+        distant_check,
+        link_check,
+        lotus_check,
+        metro_check,
+        sequence_check,
+        quantum_check,
+        range_check,
+        quad_check,
+    }
 }

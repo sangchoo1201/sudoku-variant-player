@@ -84,6 +84,6 @@ const result = PuzzleDataSchema.safeParse(parsed_data);
 const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
-console.log(puzzle_data);
-console.log(solving_state);
-console.log(result.success);
+if (import.meta.env.DEV) {
+    (globalThis as any).main = { solving_state }
+}
