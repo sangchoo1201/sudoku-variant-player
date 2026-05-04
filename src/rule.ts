@@ -305,20 +305,3 @@ const quad_check: PureCheckingFunction = function (
 
     return errors.result();
 }
-
-if (import.meta.env.DEV) {
-    (globalThis as any).rule = {
-        row_check,
-        column_check,
-        box_check,
-        segment_check,
-        distant_check,
-        link_check,
-        lotus_check,
-        metro_check,
-        sequence_check,
-        quantum_check,
-        range_check,
-        quad_check,
-    }
-}

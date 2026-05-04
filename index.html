@@ -1,11 +1,21 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+    <meta charset="UTF-8"/>
     <title>sudoku-variant</title>
-  </head>
-  <body>
-    <script type="module" src="/src/main.ts"></script>
-    <script type="module" src="/src/rule.ts"></script> <!-- FOR DEBUGGING -->
-  </body>
+</head>
+<body>
+<div id="app">
+    <div id="board">
+        <div id="board-inner">
+            <div id="main-grid"></div>
+            <div id="right-clues"></div>
+            <div id="bottom-clues"></div>
+        </div>
+    </div>
+    <div id="controls"></div>
+</div>
+<script type="module" src="/src/main.ts"></script>
+<script type="module" src="/src/layout.ts"></script>
+</body>
 </html>

@@ -1,0 +1,100 @@
+html, body, #app {
+    height: 100%;
+    margin: 0;
+}
+
+#app {
+    display: flex;
+    overflow: hidden;
+}
+
+#board {
+    position: relative;
+    align-self: center;
+}
+
+#board-inner {
+    margin: 2.5%;
+    position: relative;
+    align-self: center;
+    width: 95%;
+    height: 95%;
+    aspect-ratio: 1 / 1;
+    container-type: size;
+}
+
+#main-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+
+    width: 100%;
+    height: 100%;
+}
+
+#right-clues {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+}
+
+#bottom-clues {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 0;
+    width: 100%;
+
+    display: flex;
+}
+
+.cell {
+    border: 1px solid #999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 6cqw;
+    font-weight: bold;
+
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.thick-top { border-top: 3px solid black; }
+.thick-left { border-left: 3px solid black; }
+.thick-bottom { border-bottom: 3px solid black; }
+.thick-right { border-right: 3px solid black; }
+
+#controls {
+    align-self: center;
+}
+
+@media (orientation: portrait) {
+    #app {
+        flex-direction: column;
+    }
+}
+
+@media (orientation: landscape) {
+    #app {
+        flex-direction: row;
+    }
+}
+
+/* TEST */
+
+#board {
+    /*background: #aaaaee;*/
+}
+
+#controls {
+    background: #eeeeaa;
+}

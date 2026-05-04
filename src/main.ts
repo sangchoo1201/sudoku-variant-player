@@ -1,4 +1,5 @@
 import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
+import {setup_grid} from "./render.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
@@ -83,6 +84,8 @@ const parsed_data = parse_data(code);
 const result = PuzzleDataSchema.safeParse(parsed_data);
 const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
+
+setup_grid(puzzle_data)
 
 if (import.meta.env.DEV) {
     (globalThis as any).main = { solving_state }
