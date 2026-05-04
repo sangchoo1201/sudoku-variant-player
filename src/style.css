@@ -68,6 +68,14 @@ html, body, #app {
     -webkit-touch-callout: none;
 }
 
+.cell.selected {
+    background: rgba(100, 150, 255, 0.3);
+}
+
+.cell.selected-last {
+    background: rgba(30, 60, 255, 0.3);
+}
+
 .thick-top { border-top: 3px solid black; }
 .thick-left { border-left: 3px solid black; }
 .thick-bottom { border-bottom: 3px solid black; }

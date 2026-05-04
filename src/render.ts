@@ -1,11 +1,11 @@
 import type {PuzzleData} from "./schema.ts";
 
 const grid = document.getElementById('main-grid')!;
-const cellMap: HTMLDivElement[][] = [];
 
 export function setup_grid(puzzle_data: PuzzleData) {
+    const cell_map: HTMLDivElement[][] = [];
     for (let r = 0; r < 9; r++) {
-        cellMap[r] = [];
+        cell_map[r] = [];
         for (let c = 0; c < 9; c++) {
             const cell = document.createElement('div');
             cell.classList.add('cell');
@@ -26,7 +26,8 @@ export function setup_grid(puzzle_data: PuzzleData) {
             }
 
             grid.appendChild(cell);
-            cellMap[r][c] = cell;
+            cell_map[r][c] = cell;
         }
     }
+    return cell_map;
 }

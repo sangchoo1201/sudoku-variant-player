@@ -1,5 +1,6 @@
 import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
 import {setup_grid} from "./render.ts";
+import {setup_selection} from "./input.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
@@ -85,7 +86,8 @@ const result = PuzzleDataSchema.safeParse(parsed_data);
 const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
-setup_grid(puzzle_data)
+const cell_map = setup_grid(puzzle_data);
+setup_selection(cell_map, solving_state);
 
 if (import.meta.env.DEV) {
     (globalThis as any).main = { solving_state }
