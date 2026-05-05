@@ -25,7 +25,7 @@ type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
 
-const square_numbers = new Set([16, 25, 36, 49, 61, 81]);
+const square_numbers = new Set([16, 25, 36, 49, 64, 81]);
 const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
 
 function create_error_collector() {
