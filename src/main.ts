@@ -83,7 +83,7 @@ const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
 const cell_map = setup_grid(puzzle_data);
-setup_selection(cell_map, solving_state);
+setup_selection(cell_map, solving_state, puzzle_data.rules);
 
 if (import.meta.env.DEV) {
     (globalThis as any).main = { solving_state }

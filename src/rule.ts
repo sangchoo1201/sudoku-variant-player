@@ -13,6 +13,9 @@ import type {
     PrismRule,
 } from "./schema.ts";
 
+export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" | "[DT]" | "[QD]" |
+    "[SG]" | "[LK]" | "[LO]" | "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" | "[SQ]";
+
 type RuleCheckingResult = [true, []] | [false, Position[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
@@ -20,6 +23,13 @@ type CoordinateMappingFunction = (i: number, j: number) => Position;
 
 const square_numbers = new Set([16, 25, 36, 49, 61, 81]);
 const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
+
+function hasKey<T extends object>(
+    obj: T,
+    key: PropertyKey
+): key is keyof T {
+    return key in obj;
+}
 
 function create_error_collector() {
     const errors: Position[] = [];
@@ -56,14 +66,14 @@ function generate_get_pos(direction: "ROW" | "COL", index: number): (x: number) 
     }
 }
 
-function generic_duplicate_check (
+function generic_duplicate_check(
     solving_state: SolvingState, map: CoordinateMappingFunction
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
     for (let i = 0; i < 9; i++) {
         let numbers = Object.fromEntries(
-            Array.from({ length: 9 }, (_, i) => [i + 1, []])
+            Array.from({length: 9}, (_, i) => [i + 1, []])
         ) as Record<number, number[]>;
         for (let j = 0; j < 9; j++) {
             const [r, c] = map(i, j);
@@ -80,7 +90,7 @@ function generic_duplicate_check (
     return errors.result();
 }
 
-function generic_pair_check (
+function generic_pair_check(
     solving_state: SolvingState, neighbors: [number, number][]
 ): RuleCheckingResult {
     const get_neighbors = (r: number, c: number) => {
@@ -106,6 +116,13 @@ function generic_pair_check (
 
     return errors.result();
 }
+
+const sudoku_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
+    [solving_state.board.every(
+        row => row.every(
+            cell => cell.number !== null
+        )
+    ), []];
 
 const row_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
     generic_duplicate_check(solving_state, (row, index) => [row, index]);
@@ -358,4 +375,38 @@ const prism_check: RuleCheckingFunction<PrismRule> = function (
     }
 
     return errors.result();
+}
+
+const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
+    "[Sudoku]": sudoku_check,
+    "[R]": row_check,
+    "[C]": column_check,
+    "[B]": box_check,
+    "[DT]": distant_check,
+    "[QD]": quad_check,
+    "[SG]": (s: SolvingState, r: Rule) => segment_check(s, r as SegmentRule),
+    "[LK]": (s: SolvingState, r: Rule) => link_check(s, r as LinkRule),
+    "[LO]": (s: SolvingState, r: Rule) => lotus_check(s, r as LotusRule),
+    "[MR]": (s: SolvingState, r: Rule) => metro_check(s, r as MetroRule),
+    "[RF]": (s: SolvingState, r: Rule) => reference_check(s, r as ReferenceRule),
+    "[PR]": (s: SolvingState, r: Rule) => prism_check(s, r as PrismRule),
+    "[QT]": (s: SolvingState, r: Rule) => quantum_check(s, r as QuantumRule),
+    "[RG]": (s: SolvingState, r: Rule) => range_check(s, r as RangeRule),
+    "[SQ]": (s: SolvingState, r: Rule) => sequence_check(s, r as SequenceRule),
+} as const;
+
+export function check_all(
+    solving_state: SolvingState, rules: Rule[]
+): [boolean, Partial<Record<RuleID, Position[]>>] {
+    let correct = true;
+    const errors: Partial<Record<RuleID, Position[]>> = {};
+
+    for (const rule of rules) {
+        const id = rule.id;
+        const [c, e] = rule_checks[id](solving_state, rule);
+        if (!c) correct = false;
+        errors[id] = e;
+    }
+
+    return [correct, errors];
 }

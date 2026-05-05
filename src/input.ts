@@ -1,4 +1,5 @@
-import type {Position, SolvingState} from "./schema.ts";
+import type {Position, Rule, SolvingState} from "./schema.ts";
+import {check_all, type RuleID} from "./rule.ts";
 
 const DragMode = {
     None: "none",
@@ -20,7 +21,11 @@ let input_mode: InputMode = InputMode.Normal;
 let selected = new Set<number>();
 const encode = ([r, c]: Position) => r * 100 + c;
 
-export function setup_selection(cell_map: HTMLDivElement[][], solving_state: SolvingState) {
+function entries<T extends object>(obj: T) {
+    return Object.entries(obj) as [keyof T, T[keyof T]][];
+}
+
+export function setup_selection(cell_map: HTMLDivElement[][], solving_state: SolvingState, rules: Rule[]) {
     const grid = document.getElementById('main-grid')!;
 
     function add_selection(pos: Position, is_last: boolean = true) {
@@ -92,6 +97,23 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         });
     }
 
+    function show_errors(errors: Partial<Record<RuleID, Position[]>>) {
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                const cell = cell_map[r][c];
+                cell.classList.remove('error');
+            }
+        }
+
+        for (const [_, error] of entries(errors)) {
+            if (error === undefined) continue;
+            for (const [r, c] of error) {
+                const cell = cell_map[r][c];
+                cell.classList.add('error');
+            }
+        }
+    }
+
     window.addEventListener('keydown', (e) => {
         if (e.repeat) return; // 꾹 누름 방지
 
@@ -100,6 +122,17 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         if (e.shiftKey) mode = InputMode.Center;
 
         const key = e.key;
+
+        // FOR DEBUGGING
+        if (key === 'Enter') {
+            let result = "";
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    result += solving_state.board[i][j].number || 0;
+                }
+            }
+            console.log(result);
+        }
 
         // 숫자 입력
         if (key >= '1' && key <= '9') {
@@ -110,6 +143,9 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         if (key === 'Backspace' || key === 'Delete') {
             apply_number(0, mode, false);
         }
+
+        const [correct, errors] = check_all(solving_state, rules);
+        show_errors(errors);
     });
 
     window.addEventListener('mousedown', (e) => {
@@ -141,7 +177,6 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
 
         const r = Number(target.dataset.row);
         const c = Number(target.dataset.col);
-        console.log(`dblclick at ${r}, ${c}`);
 
         const value = solving_state.board[r][c].number;
 
