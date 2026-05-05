@@ -230,7 +230,7 @@ export type Rule = z.infer<typeof RuleSchema>;
 
 export const PuzzleDataSchema = z.object({
     id: z.string(),
-    difficulty: z.number(),
+    difficulty: z.union([z.number(), z.literal("?")]),
     board: z.array(z.array(z.number()).length(9)).length(9),
     rules: z.array(RuleSchema),
     solving_state: SolvingStateSchema.optional()

@@ -234,6 +234,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
         }
 
         const [_, errors] = check_all(solving_state, rules);
+        console.log(errors);
         show_errors(errors);
     });
 

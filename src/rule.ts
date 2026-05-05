@@ -408,7 +408,7 @@ const root_check: RuleCheckingFunction<RootRule> = function (
         for (let nr = 0; nr < 9; nr++) {
             for (let nc = 0; nc < 9; nc++) {
                 const d = (r - nr) ** 2 + (c - nc) ** 2;
-                if (d > distance) continue;
+                if (d > distance || d === 0) continue;
                 const v = solving_state.board[nr][nc].number;
                 if (d === distance && (v === null || v === value)) has_exact = true;
                 if (d < distance && v === value) has_close = true;
