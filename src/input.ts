@@ -2,6 +2,13 @@ import type {Position, Rule, SolvingState} from "./schema.ts";
 import {check_all, type RuleID} from "./rule.ts";
 import type {CellType} from "./render.ts";
 
+const direction_map: Partial<Record<string, [number, number]>> = {
+    "ArrowUp": [-1, 0],
+    "ArrowLeft": [0, -1],
+    "ArrowDown": [1, 0],
+    "ArrowRight": [0, 1],
+} as const;
+
 const DragMode = {
     None: "none",
     Add: "add",
@@ -196,6 +203,22 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
             console.log(result);
         }
 
+        // 방향키 이동
+        if (code.startsWith('Arrow')) {
+            const direction = direction_map[code];
+            if (direction === undefined || last_cell === null) return;
+
+            const r = Number(last_cell.dataset.row);
+            const c = Number(last_cell.dataset.col);
+            const [dr, dc] = direction;
+            const nr = (r + dr + 9) % 9, nc = (c + dc + 9) % 9;
+
+            if (!(e.ctrlKey || e.metaKey || e.shiftKey)) {
+                reset_selection();
+            }
+            add_selection([nr, nc]);
+        }
+
         // 숫자 입력
         for (const keyword of ['Digit', 'Numpad', 'Key']) {
             if (keyword === 'Key' && (mode === InputMode.Normal || !input_alphabet)) continue;
@@ -223,7 +246,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
 
         const r = Number(target.dataset.row);
         const c = Number(target.dataset.col);
-        const multi_select = e.ctrlKey || e.shiftKey;
+        const multi_select = e.ctrlKey || e.metaKey || e.shiftKey;
 
         drag_mode = DragMode.Add;
         if (multi_select && selected.has(encode([r, c]))) {
