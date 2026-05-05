@@ -1,16 +1,25 @@
-import {
-    type Position,
-    type Rule,
-    type SegmentRule,
-    type SolvingState,
-    type LinkRule,
-    type LotusRule, type MetroRule, type SequenceRule, type QuantumRule, type RangeRule
+import type {
+    Position,
+    Rule,
+    SolvingState,
+    SegmentRule,
+    LinkRule,
+    LotusRule,
+    MetroRule,
+    SequenceRule,
+    QuantumRule,
+    RangeRule,
+    ReferenceRule,
+    PrismRule,
 } from "./schema.ts";
 
 type RuleCheckingResult = [true, []] | [false, Position[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
+
+const square_numbers = new Set([16, 25, 36, 49, 61, 81]);
+const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
 
 function create_error_collector() {
     const errors: Position[] = [];
@@ -111,7 +120,7 @@ const box_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheck
 
 const segment_check: RuleCheckingFunction<SegmentRule> = (solving_state: SolvingState, rule: SegmentRule): RuleCheckingResult =>
     generic_duplicate_check(solving_state, (region, index) =>
-        rule.params.regions[region][index]
+        rule.render_state.regions[region][index]
     );
 
 const distant_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
@@ -122,7 +131,7 @@ const link_check: RuleCheckingFunction<LinkRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const [[r1, c1], [r2, c2]] of rule.params.edges) {
+    for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
         const cell1 = solving_state.board[r1][c1];
         const cell2 = solving_state.board[r2][c2];
         if (cell1.number === null || cell2.number === null) continue;
@@ -140,7 +149,7 @@ const lotus_check: RuleCheckingFunction<LotusRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const [r, c] of rule.params.cells) {
+    for (const [r, c] of rule.render_state.cells) {
         const value = solving_state.board[r][c].number;
         if (value === null) continue;
 
@@ -172,7 +181,7 @@ const metro_check: RuleCheckingFunction<MetroRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const metro of rule.params.metros) {
+    for (const metro of rule.render_state.metros) {
         const nums: number[] = [];
 
         for (const [r, c] of metro) {
@@ -200,7 +209,7 @@ const sequence_check: RuleCheckingFunction<SequenceRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const [direction, index, sequence] of rule.params.hints) {
+    for (const [direction, index, sequence] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
 
         const line: number[] = [];
@@ -230,7 +239,7 @@ const quantum_check: RuleCheckingFunction<QuantumRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const [direction, index, [a, b]] of rule.params.hints) {
+    for (const [direction, index, [a, b]] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
         const [r1, c1] = get_pos(a - 1), [r2, c2] = get_pos(b - 1);
         const v1 = solving_state.board[r1][c1].number;
@@ -253,7 +262,7 @@ const range_check: RuleCheckingFunction<RangeRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const [direction, index, distance] of rule.params.hints) {
+    for (const [direction, index, [distance]] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
         const one_pos: number[] = [], nine_pos: number[] = [];
 
@@ -300,6 +309,51 @@ const quad_check: PureCheckingFunction = function (
             if (!(has_even && has_odd)) {
                 errors.add_all(positions);
             }
+        }
+    }
+
+    return errors.result();
+}
+
+const reference_check: RuleCheckingFunction<ReferenceRule> = function (
+    solving_state: SolvingState, rule: ReferenceRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [direction, index] of rule.render_state.lines) {
+        const get_pos = generate_get_pos(direction, index);
+        for (let i = 0; i < 9; i++) {
+            const [r, c] = get_pos(i);
+            const v = solving_state.board[r][c].number;
+            if (v === null) continue;
+
+            const get_reference_pos = generate_get_pos(direction, v - 1);
+            const [ref_r, ref_c] = get_reference_pos(i);
+            const ref_v = solving_state.board[ref_r][ref_c].number;
+            if (ref_v !== index + 1) {
+                errors.add(get_pos(i));
+                errors.add(get_reference_pos(i));
+            }
+        }
+    }
+
+    return errors.result();
+}
+
+const prism_check: RuleCheckingFunction<PrismRule> = function (
+    solving_state: SolvingState, rule: PrismRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [r1, c1, r2, c2, type] of rule.render_state.edges) {
+        const v1 = solving_state.board[r1][c1].number;
+        const v2 = solving_state.board[r2][c2].number;
+        if (v1 === null || v2 === null) continue;
+
+        const num = v1 * 10 + v2;
+        if (!(type ? prime_numbers : square_numbers).has(num)) {
+            errors.add([r1, c1]);
+            errors.add([r2, c2]);
         }
     }
 
