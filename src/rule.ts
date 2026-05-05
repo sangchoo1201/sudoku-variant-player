@@ -11,10 +11,14 @@ import type {
     RangeRule,
     ReferenceRule,
     PrismRule,
+    TemperatureRule,
+    RootRule,
 } from "./schema.ts";
 
-export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" | "[DT]" | "[QD]" |
-    "[SG]" | "[LK]" | "[LO]" | "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" | "[SQ]";
+export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" |
+    "[DT]" | "[QD]" | "[SG]" | "[LK]" | "[LO]" |
+    "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" |
+    "[SQ]" | "[TM]" | "[RT]";
 
 type RuleCheckingResult = [true, []] | [false, Position[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
@@ -23,13 +27,6 @@ type CoordinateMappingFunction = (i: number, j: number) => Position;
 
 const square_numbers = new Set([16, 25, 36, 49, 61, 81]);
 const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
-
-function hasKey<T extends object>(
-    obj: T,
-    key: PropertyKey
-): key is keyof T {
-    return key in obj;
-}
 
 function create_error_collector() {
     const errors: Position[] = [];
@@ -377,6 +374,55 @@ const prism_check: RuleCheckingFunction<PrismRule> = function (
     return errors.result();
 }
 
+const temperature_check: RuleCheckingFunction<TemperatureRule> = function (
+    solving_state: SolvingState, rule: TemperatureRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    outer: for (const {cells, color} of rule.render_state.regions) {
+        let sum = 0;
+        for (const [r, c] of cells) {
+            const value = solving_state.board[r][c].number;
+            if (value === null) continue outer;
+            sum += value;
+        }
+        if (sum <= 10 && color == 'blue') continue;
+        if (sum == 15 && color == 'green') continue;
+        if (sum >= 20 && color == 'red') continue;
+        errors.add_all(cells);
+    }
+
+    return errors.result();
+}
+
+const root_check: RuleCheckingFunction<RootRule> = function (
+    solving_state: SolvingState, rule: RootRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [r, c, distance] of rule.render_state.cells) {
+        const value = solving_state.board[r][c].number;
+        if (value === null) continue;
+
+        let has_exact = false, has_close = false;
+        for (let nr = 0; nr < 9; nr++) {
+            for (let nc = 0; nc < 9; nc++) {
+                const d = (r - nr) ** 2 + (c - nc) ** 2;
+                if (d > distance) continue;
+                const v = solving_state.board[nr][nc].number;
+                if (d === distance && (v === null || v === value)) has_exact = true;
+                if (d < distance && v === value) has_close = true;
+            }
+        }
+
+        if (!has_exact || has_close) {
+            errors.add([r, c]);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -393,6 +439,8 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[QT]": (s: SolvingState, r: Rule) => quantum_check(s, r as QuantumRule),
     "[RG]": (s: SolvingState, r: Rule) => range_check(s, r as RangeRule),
     "[SQ]": (s: SolvingState, r: Rule) => sequence_check(s, r as SequenceRule),
+    "[TM]": (s: SolvingState, r: Rule) => temperature_check(s, r as TemperatureRule),
+    "[RT]": (s: SolvingState, r: Rule) => root_check(s, r as RootRule),
 } as const;
 
 export function check_all(

@@ -181,6 +181,31 @@ const PrismRuleSchema = z.object({
 
 export type PrismRule = z.infer<typeof PrismRuleSchema>;
 
+const TemperatureRuleSchema = z.object({
+    id: z.literal("[TM]"),
+    render_state: z.object({
+        regions: z.array(
+            z.object({
+                cells: z.tuple([PositionSchema, PositionSchema, PositionSchema]),
+                color: z.union([z.literal("red"), z.literal("green"), z.literal("blue")])
+            })
+        ),
+    }),
+});
+
+export type TemperatureRule = z.infer<typeof TemperatureRuleSchema>;
+
+const RootRuleSchema = z.object({
+    id: z.literal("[RT]"),
+    render_state: z.object({
+        cells: z.array(
+            z.tuple([z.number(), z.number(), z.number()])
+        ),
+    }),
+});
+
+export type RootRule = z.infer<typeof RootRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -197,6 +222,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     QuadRuleSchema,
     ReferenceRuleSchema,
     PrismRuleSchema,
+    TemperatureRuleSchema,
+    RootRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
