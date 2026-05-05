@@ -344,7 +344,7 @@ const reference_check: RuleCheckingFunction<ReferenceRule> = function (
             const get_reference_pos = generate_get_pos(direction, v - 1);
             const [ref_r, ref_c] = get_reference_pos(i);
             const ref_v = solving_state.board[ref_r][ref_c].number;
-            if (ref_v !== index + 1) {
+            if (ref_v !== null && ref_v !== index + 1) {
                 errors.add(get_pos(i));
                 errors.add(get_reference_pos(i));
             }
