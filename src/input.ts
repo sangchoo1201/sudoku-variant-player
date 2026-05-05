@@ -1,5 +1,6 @@
 import type {Position, Rule, SolvingState} from "./schema.ts";
 import {check_all, type RuleID} from "./rule.ts";
+import type {CellType} from "./render.ts";
 
 const DragMode = {
     None: "none",
@@ -18,6 +19,7 @@ type InputMode = typeof InputMode[keyof typeof InputMode];
 let last_cell: HTMLDivElement | null = null;
 let drag_mode: DragMode = DragMode.None;
 let input_mode: InputMode = InputMode.Normal;
+let input_alphabet = false;
 let selected = new Set<number>();
 const encode = ([r, c]: Position) => r * 100 + c;
 
@@ -25,14 +27,14 @@ function entries<T extends object>(obj: T) {
     return Object.entries(obj) as [keyof T, T[keyof T]][];
 }
 
-export function setup_selection(cell_map: HTMLDivElement[][], solving_state: SolvingState, rules: Rule[]) {
+export function setup_selection(cell_map: CellType[][], solving_state: SolvingState, rules: Rule[]) {
     const grid = document.getElementById('main-grid')!;
 
     function add_selection(pos: Position, is_last: boolean = true) {
         if (selected.has(encode(pos))) return;
         selected.add(encode(pos));
         const [r, c] = pos;
-        const cell = cell_map[r][c];
+        const cell = cell_map[r][c].cell;
         cell.classList.add('selected');
 
         if (!is_last) return;
@@ -48,7 +50,7 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         if (!selected.has(encode(pos))) return;
         selected.delete(encode(pos));
         const [r, c] = pos;
-        const cell = cell_map[r][c];
+        const cell = cell_map[r][c].cell;
         cell.classList.remove('selected');
         cell.classList.remove('selected-last');
     }
@@ -57,7 +59,7 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         selected.clear();
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
-                const cell = cell_map[r][c];
+                const cell = cell_map[r][c].cell;
                 cell.classList.remove('selected');
                 cell.classList.remove('selected-last');
             }
@@ -65,42 +67,100 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         last_cell = null;
     }
 
-    function is_common(value: number, mode: InputMode) {
+    function is_common(value: string, mode: InputMode) {
         for (let k of selected) {
             const r = Math.floor(k / 100), c = k % 100;
             const cell = solving_state.board[r][c];
             if (cell.fixed) continue;
             switch (mode) {
                 case InputMode.Normal:
-                    if (cell.number !== value) return false;
+                    if (cell.number !== Number(value)) return false;
                     break;
                 case InputMode.Corner:
-                    if (!cell.corner[value.toString()]) return false;
+                    if (!cell.corner[value] && cell.number === null) return false;
                     break;
                 case InputMode.Center:
-                    if (!cell.center[value.toString()]) return false;
+                    if (!cell.center[value] && cell.number === null) return false;
                     break;
             }
         }
         return true;
     }
 
-    function apply_number(value: number, mode: InputMode, add: boolean = true) {
+    function update_corner(corner: HTMLDivElement[], set: Record<string, true>) {
+        const sorted_keys = Object.keys(set).sort();
+        for (let i = 0; i < 8; i++) {
+            if (i < sorted_keys.length) {
+                corner[i].textContent = sorted_keys[i];
+            } else {
+                corner[i].textContent = '';
+            }
+        }
+    }
+
+    function update_center(center: HTMLDivElement, set: Record<string, true>) {
+        const sorted_keys = Object.keys(set).sort();
+        center.textContent = sorted_keys.join('');
+    }
+
+    function apply_number(value: string, mode: InputMode, add: boolean = true) {
         selected.forEach(k => {
             const r = Math.floor(k / 100), c = k % 100;
             const cell = solving_state.board[r][c];
             if (cell.fixed) return;
-            if (mode == InputMode.Normal) {
-                cell.number = add ? value : null;
-                cell_map[r][c].textContent = add ? value.toString() : '';
+            if (mode === InputMode.Normal) {
+                if (add) {
+                    cell.number = Number(value);
+                    cell_map[r][c].normal.textContent = value;
+                    cell_map[r][c].cell.classList.add('filled');
+                } else {
+                    cell.number = null;
+                    cell_map[r][c].normal.textContent = '';
+                    cell_map[r][c].cell.classList.remove('filled');
+                }
+            }
+            if (cell.number !== null) return;
+            if (mode === InputMode.Corner) {
+                if (add) {
+                    cell.corner[value] = true;
+                } else {
+                    delete cell.corner[value];
+                }
+                update_corner(cell_map[r][c].corner, cell.corner);
+            }
+            if (mode === InputMode.Center) {
+                if (add) {
+                    cell.center[value] = true;
+                } else {
+                    delete cell.center[value];
+                }
+                update_center(cell_map[r][c].center, cell.center);
             }
         });
+    }
+
+    function clear_number() {
+        selected.forEach(k => {
+            const r = Math.floor(k / 100), c = k % 100;
+            const cell = solving_state.board[r][c];
+            if (cell.fixed) return;
+            if (cell.number !== null) {
+                cell.number = null;
+                cell_map[r][c].normal.textContent = '';
+                cell_map[r][c].cell.classList.remove('filled');
+                return;
+            }
+            cell.corner = {};
+            update_corner(cell_map[r][c].corner, cell.corner);
+            cell.center = {};
+            update_center(cell_map[r][c].center, cell.center);
+        })
     }
 
     function show_errors(errors: Partial<Record<RuleID, Position[]>>) {
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
-                const cell = cell_map[r][c];
+                const cell = cell_map[r][c].cell;
                 cell.classList.remove('error');
             }
         }
@@ -108,23 +168,25 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         for (const [_, error] of entries(errors)) {
             if (error === undefined) continue;
             for (const [r, c] of error) {
-                const cell = cell_map[r][c];
+                const cell = cell_map[r][c].cell;
                 cell.classList.add('error');
             }
         }
     }
 
     window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) e.preventDefault();
+
         if (e.repeat) return; // 꾹 누름 방지
 
         let mode = input_mode;
-        if (e.ctrlKey) mode = InputMode.Corner;
-        if (e.shiftKey) mode = InputMode.Center;
+        if (e.shiftKey) mode = InputMode.Corner;
+        if (e.ctrlKey || e.metaKey) mode = InputMode.Center;
 
-        const key = e.key;
+        const code = e.code;
 
         // FOR DEBUGGING
-        if (key === 'Enter') {
+        if (code === 'Enter') {
             let result = "";
             for (let i = 0; i < 9; i++) {
                 for (let j = 0; j < 9; j++) {
@@ -135,16 +197,20 @@ export function setup_selection(cell_map: HTMLDivElement[][], solving_state: Sol
         }
 
         // 숫자 입력
-        if (key >= '1' && key <= '9') {
-            apply_number(Number(key), mode, !is_common(Number(key), mode));
+        for (const keyword of ['Digit', 'Numpad', 'Key']) {
+            if (keyword === 'Key' && (mode === InputMode.Normal || !input_alphabet)) continue;
+            if (code.startsWith(keyword)) {
+                const key = code.slice(keyword.length);
+                apply_number(key, mode, !is_common(key, mode));
+            }
         }
 
         // 삭제
-        if (key === 'Backspace' || key === 'Delete') {
-            apply_number(0, mode, false);
+        if (code === 'Backspace' || code === 'Delete') {
+            clear_number()
         }
 
-        const [correct, errors] = check_all(solving_state, rules);
+        const [_, errors] = check_all(solving_state, rules);
         show_errors(errors);
     });
 

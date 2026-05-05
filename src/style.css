@@ -59,10 +59,7 @@ html, body, #app {
     display: flex;
     align-items: center;
     justify-content: center;
-
-    font-size: 6cqw;
-    font-weight: bold;
-    color: rgb(29, 106, 229);
+    position: relative;
 
     user-select: none;
     -webkit-user-select: none;
@@ -71,7 +68,7 @@ html, body, #app {
     --ring: 1cqw;
 }
 
-.cell.fixed {
+.cell.fixed > .normal {
     color: black;
 }
 
@@ -85,6 +82,59 @@ html, body, #app {
 
 .cell.error {
     background: rgba(255, 0, 0, 0.3);
+}
+
+.normal {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 6cqw;
+    font-weight: bold;
+    color: rgb(29, 106, 229);
+}
+
+.corner {
+    position: absolute;
+    inset: 0;
+
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+
+    pointer-events: none; /* 클릭 방해 안 하게 */
+}
+
+.corner > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 2.5cqw;  /* ⭐ 핵심: 상대 크기 */
+    color: rgb(29, 106, 229);
+}
+
+.cell.filled .corner {
+    display: none;
+}
+
+.center {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 2.5cqw;
+    color: rgb(29, 106, 229);
+}
+
+.cell.filled .center {
+    display: none;
 }
 
 .thick-top { border-top: 3px solid black; }
