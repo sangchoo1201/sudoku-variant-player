@@ -9,19 +9,15 @@ const default_data: PuzzleData = {
     rules: [
         {
             id: "[Sudoku]",
-            params: {},
         },
         {
             id: "[R]",
-            params: {}
         },
         {
             id: "[C]",
-            params: {}
         },
         {
             id: "[B]",
-            params: {}
         },
     ]
 };

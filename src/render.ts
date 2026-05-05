@@ -23,6 +23,7 @@ export function setup_grid(puzzle_data: PuzzleData) {
                 cell.textContent = '';
             } else {
                 cell.textContent = value.toString();
+                cell.classList.add('fixed');
             }
 
             grid.appendChild(cell);

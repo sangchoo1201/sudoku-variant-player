@@ -62,10 +62,15 @@ html, body, #app {
 
     font-size: 6cqw;
     font-weight: bold;
+    color: rgb(29, 106, 229);
 
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+}
+
+.cell.fixed {
+    color: black;
 }
 
 .cell.selected {
