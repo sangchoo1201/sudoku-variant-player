@@ -1,6 +1,6 @@
 import type {Position, Rule, SolvingState, RuleID} from "./schema.ts";
 import {check_all} from "./rule.ts";
-import type {CellType} from "./render.ts";
+import type {CellType} from "./main.ts";
 
 const direction_map: Partial<Record<string, [number, number]>> = {
     "ArrowUp": [-1, 0],

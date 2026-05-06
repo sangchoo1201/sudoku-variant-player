@@ -1,5 +1,5 @@
 import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
-import {render_all, setup_grid} from "./render.ts";
+import {render_all} from "./render.ts";
 import {setup_selection} from "./input.ts";
 
 const default_data: PuzzleData = {
@@ -72,6 +72,89 @@ function generate_default_solving_state(puzzle_data: PuzzleData): SolvingState {
         undo: [],
         redo: [],
     }
+}
+
+const grid = document.getElementById('grid')!;
+const main_grid = document.getElementById('main-grid')!;
+const right_clue = document.getElementById('right-clues')!;
+const bottom_clue = document.getElementById('bottom-clues')!;
+const corner_order = [0, 4, 1, 6, 8, 7, 2, 5, 3] as const;
+
+export type CellType = {
+    cell: HTMLDivElement,
+    normal: HTMLDivElement,
+    corner: HTMLDivElement[],
+    center: HTMLDivElement,
+}
+
+function setup_grid(puzzle_data: PuzzleData) {
+    let mx_side_length = 0;
+    for (const rule of puzzle_data.rules) {
+        if (rule.id === "[QT]" || rule.id === "[RG]" || rule.id === "[SQ]") {
+            for (const [_dir, _idx, numbers] of rule.render_state.side_hints) {
+                mx_side_length = Math.max(mx_side_length, numbers.length);
+            }
+        }
+    }
+    const mx_resize = mx_side_length / 2.8;
+    const side_size = `${mx_resize * 100 / (mx_resize + 9)}%`;
+    const main_size = `${900 / (mx_resize + 9)}%`
+
+
+    grid.style.width = main_size;
+    grid.style.height = main_size;
+    right_clue.style.width = side_size;
+    right_clue.style.height = main_size;
+    bottom_clue.style.width = main_size;
+    bottom_clue.style.height = side_size;
+
+    const cell_map: CellType[][] = [];
+    for (let r = 0; r < 9; r++) {
+        cell_map[r] = [];
+        for (let c = 0; c < 9; c++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            main_grid.appendChild(cell);
+
+            const normal = document.createElement('div');
+            normal.classList.add('normal');
+            cell.appendChild(normal);
+
+            const corner = document.createElement('div');
+            corner.classList.add('corner');
+            cell.appendChild(corner);
+
+            const corner_cells: HTMLDivElement[] = [];
+            for (let i = 0; i < 9; i++) {
+                const corner_inner = document.createElement('div');
+                corner_cells[corner_order[i]] = corner_inner;
+                corner.appendChild(corner_inner);
+            }
+
+            const center = document.createElement('div');
+            center.classList.add('center');
+            cell.appendChild(center);
+
+            cell.dataset.row = r.toString();
+            cell.dataset.col = c.toString();
+
+            const value = puzzle_data.board[r][c];
+            if (value === 0) {
+                normal.textContent = '';
+            } else {
+                normal.textContent = value.toString();
+                cell.classList.add('fixed');
+            }
+
+            cell_map[r][c] = {
+                cell: cell,
+                normal: normal,
+                corner: corner_cells,
+                center: center,
+            };
+        }
+    }
+    return cell_map;
 }
 
 const query_string = window.location.search;

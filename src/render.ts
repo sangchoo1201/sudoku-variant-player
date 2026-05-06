@@ -2,90 +2,103 @@ import type {
     LinkRule,
     LotusRule,
     MetroRule,
-    PrismRule,
-    PuzzleData,
+    PrismRule, QuantumRule, RangeRule,
     ReferenceRule,
     RootRule,
     Rule,
-    RuleID, TemperatureRule
+    RuleID, SequenceRule, SideRule, TemperatureRule
 } from "./schema.ts";
 
-const grid = document.getElementById('main-grid')!;
-const corner_order = [0, 4, 1, 6, 8, 7, 2, 5, 3] as const;
-
-export type CellType = {
-    cell: HTMLDivElement,
-    normal: HTMLDivElement,
-    corner: HTMLDivElement[],
-    center: HTMLDivElement,
-}
-
-export function setup_grid(puzzle_data: PuzzleData) {
-    const cell_map: CellType[][] = [];
-    for (let r = 0; r < 9; r++) {
-        cell_map[r] = [];
-        for (let c = 0; c < 9; c++) {
-            const cell = document.createElement('div');
-            cell.classList.add('cell');
-            grid.appendChild(cell);
-
-            const normal = document.createElement('div');
-            normal.classList.add('normal');
-            cell.appendChild(normal);
-
-            const corner = document.createElement('div');
-            corner.classList.add('corner');
-            cell.appendChild(corner);
-
-            const corner_cells: HTMLDivElement[] = [];
-            for (let i = 0; i < 9; i++) {
-                const corner_inner = document.createElement('div');
-                corner_cells[corner_order[i]] = corner_inner;
-                corner.appendChild(corner_inner);
-            }
-
-            const center = document.createElement('div');
-            center.classList.add('center');
-            cell.appendChild(center);
-
-            cell.dataset.row = r.toString();
-            cell.dataset.col = c.toString();
-
-            if (r % 3 === 0) cell.classList.add('thick-top');
-            if (c % 3 === 0) cell.classList.add('thick-left');
-            if (r % 3 === 2) cell.classList.add('thick-bottom');
-            if (c % 3 === 2) cell.classList.add('thick-right');
-
-            if (r === 0) cell.classList.add('outside-top');
-            if (c === 0) cell.classList.add('outside-left');
-            if (r === 8) cell.classList.add('outside-bottom');
-            if (c === 8) cell.classList.add('outside-right');
-
-            const value = puzzle_data.board[r][c];
-            if (value === 0) {
-                normal.textContent = '';
-            } else {
-                normal.textContent = value.toString();
-                cell.classList.add('fixed');
-            }
-
-            cell_map[r][c] = {
-                cell: cell,
-                normal: normal,
-                corner: corner_cells,
-                center: center,
-            };
-        }
-    }
-    return cell_map;
-}
-
 type RenderContext = {
-    layer_under: SVGSVGElement,
+    layer_bottom: SVGSVGElement,
+    layer_middle: SVGSVGElement,
     layer_top: SVGSVGElement,
 }
 
+type PureRenderer = (ctx: RenderContext) => void;
 type Renderer<T> = (ctx: RenderContext, rule: T) => void;
+
+const sudoku_render: PureRenderer = function (ctx: RenderContext) {
+    for (let i = 0; i < 20; i++) {
+        const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line"
+        );
+
+        const [x1, x2, y1, y2] = (i >= 10 ? [0.025, 9, i % 10, i % 10] : [i % 10, i % 10, 0.025, 9]).map(String);
+
+        line.setAttribute("x1", x1);
+        line.setAttribute("y1", y1);
+        line.setAttribute("x2", x2);
+        line.setAttribute("y2", y2);
+
+        line.setAttribute("stroke", "#aaa");
+        line.setAttribute("stroke-width", "0.01");
+        line.setAttribute("stroke-dasharray", "0.15 0.05");
+
+        ctx.layer_middle.appendChild(line);
+    }
+}
+
+const row_render: PureRenderer = function (ctx: RenderContext) {
+    for (let i = 0; i <= 9; i++) {
+        const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line"
+        );
+
+        line.setAttribute("x1", "0");
+        line.setAttribute("y1", i.toString());
+        line.setAttribute("x2", "9");
+        line.setAttribute("y2", i.toString());
+
+        line.setAttribute("stroke", "#777");
+        line.setAttribute("stroke-width", "0.035");
+
+        ctx.layer_middle.appendChild(line);
+    }
+}
+
+const column_render: PureRenderer = function (ctx: RenderContext) {
+    for (let i = 0; i <= 9; i++) {
+        const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line"
+        );
+
+        line.setAttribute("x1", i.toString());
+        line.setAttribute("y1", "0");
+        line.setAttribute("x2", i.toString());
+        line.setAttribute("y2", "9");
+
+        line.setAttribute("stroke", "#777");
+        line.setAttribute("stroke-width", "0.035");
+
+        ctx.layer_middle.appendChild(line);
+    }
+}
+
+const box_render: PureRenderer = function (ctx: RenderContext) {
+    for (let i = 0; i < 8; i++) {
+        const line = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line"
+        );
+
+        const i3 = (i % 4) * 3;
+        const [x1, x2, y1, y2] = (i >= 4 ? [-0.03, 9.03, i3, i3] : [i3, i3, -0.03, 9.03]).map(String);
+
+        line.setAttribute("x1", x1);
+        line.setAttribute("y1", y1);
+        line.setAttribute("x2", x2);
+        line.setAttribute("y2", y2);
+
+        line.setAttribute("stroke", "black");
+        line.setAttribute("stroke-width", "0.06");
+
+        ctx.layer_middle.appendChild(line);
+    }
+}
 
 const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: LinkRule) {
     for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
@@ -120,7 +133,7 @@ const lotus_render: Renderer<LotusRule> = function (ctx: RenderContext, rule: Lo
         circle.setAttribute("stroke", "rgba(189, 235, 107, 1)");
         circle.setAttribute("stroke-width", "0.05");
 
-        ctx.layer_under.appendChild(circle);
+        ctx.layer_bottom.appendChild(circle);
     }
 }
 
@@ -144,7 +157,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
         poly.setAttribute("stroke-linejoin", "round");
         poly.setAttribute("stroke-linecap", "round");
 
-        ctx.layer_under.appendChild(poly);
+        ctx.layer_bottom.appendChild(poly);
     }
 }
 
@@ -163,7 +176,7 @@ const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: Pr
 
         const poly = document.createElementNS(
             "http://www.w3.org/2000/svg",
-            "polyline"
+            "polygon"
         );
 
         poly.setAttribute("points", points.join(' '));
@@ -198,7 +211,7 @@ const reference_render: Renderer<ReferenceRule> = function (ctx: RenderContext, 
         line.setAttribute("stroke", "rgba(255, 0, 0, 0.3)");
         line.setAttribute("stroke-width", "0.25");
 
-        ctx.layer_under.appendChild(line);
+        ctx.layer_bottom.appendChild(line);
     }
 }
 
@@ -226,8 +239,10 @@ const root_render: Renderer<RootRule> = function (ctx: RenderContext, rule: Root
         text.setAttribute("font-weight", "bold")
         text.setAttribute("font-family", "Cambria Math, serif");
         text.setAttribute("fill", "rgba(127, 127, 127, 0.5)");
+        text.style.userSelect = "none";
+        text.style.pointerEvents = "none";
 
-        ctx.layer_under.appendChild(text);
+        ctx.layer_bottom.appendChild(text);
     }
 }
 
@@ -254,11 +269,82 @@ const temperature_render: Renderer<TemperatureRule> = function (ctx: RenderConte
         poly.setAttribute("stroke", new_color);
         poly.setAttribute("stroke-width", "0.6");
 
-        ctx.layer_under.appendChild(poly);
+        ctx.layer_bottom.appendChild(poly);
     }
 }
 
+function generate_get_pos(direction: "ROW" | "COL", index: number): (n: number, b?: number) => [number, number] {
+    switch (direction) {
+        case "ROW":
+            return (n: number, b: number = 0) => [(n / 4) + 9.25, index + b + 0.5];
+        case "COL":
+            return (n: number, b: number = 0) => [index + b + 0.5, (n / 2.8) + 9.25];
+    }
+}
+
+function side_render(ctx: RenderContext, rule: SideRule, color: string) {
+    for (const [direction, index, cells] of rule.render_state.side_hints) {
+        const get_pos = generate_get_pos(direction, index);
+
+        for (const b of [-0.5, 0.5]) {
+            const line = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "line"
+            );
+
+            const [x1, y1] = get_pos(-0.5, b);
+            const [x2, y2] = get_pos(cells.length - 0.5, b);
+
+            line.setAttribute("x1", x1.toString());
+            line.setAttribute("y1", y1.toString());
+            line.setAttribute("x2", x2.toString());
+            line.setAttribute("y2", y2.toString());
+
+            line.setAttribute("stroke", "#aaa");
+            line.setAttribute("stroke-width", "0.05");
+
+            ctx.layer_middle.appendChild(line);
+        }
+
+        for (const [i, value] of cells.entries()) {
+            const text = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "text"
+            );
+
+            const [x, y] = get_pos(i);
+
+            text.textContent = value.toString();
+
+            text.setAttribute("x", x.toString());
+            text.setAttribute("y", y.toString());
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("dominant-baseline", "middle");
+            text.setAttribute("font-size", "0.3");
+            text.setAttribute("font-weight", "bold")
+            text.setAttribute("fill", color);
+            text.style.userSelect = "none";
+            text.style.pointerEvents = "none";
+
+            ctx.layer_middle.appendChild(text);
+        }
+    }
+}
+
+const sequence_render: Renderer<SequenceRule> = (ctx: RenderContext, rule: SequenceRule) =>
+    side_render(ctx, rule, "red");
+
+const quantum_render: Renderer<QuantumRule> = (ctx: RenderContext, rule: QuantumRule) =>
+    side_render(ctx, rule, "green");
+
+const range_render: Renderer<RangeRule> = (ctx: RenderContext, rule: RangeRule) =>
+    side_render(ctx, rule, "blue");
+
 const renderers: Partial<Record<RuleID, (ctx: RenderContext, r: Rule) => void>> = {
+    "[Sudoku]": sudoku_render,
+    "[R]": row_render,
+    "[C]": column_render,
+    "[B]": box_render,
     "[LK]": (ctx, r) => link_render(ctx, r as LinkRule),
     "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
     "[MR]": (ctx, r) => metro_render(ctx, r as MetroRule),
@@ -266,11 +352,15 @@ const renderers: Partial<Record<RuleID, (ctx: RenderContext, r: Rule) => void>> 
     "[RF]": (ctx, r) => reference_render(ctx, r as ReferenceRule),
     "[RT]": (ctx, r) => root_render(ctx, r as RootRule),
     "[TM]": (ctx, r) => temperature_render(ctx, r as TemperatureRule),
+    "[SQ]": (ctx, r) => sequence_render(ctx, r as SequenceRule),
+    "[QT]": (ctx, r) => quantum_render(ctx, r as QuantumRule),
+    "[RG]": (ctx, r) => range_render(ctx, r as RangeRule),
 };
 
 export function render_all(rules: Rule[]) {
     const ctx: RenderContext = {
-        layer_under: document.querySelector<SVGSVGElement>("#layer-under")!,
+        layer_bottom: document.querySelector<SVGSVGElement>("#layer-bottom")!,
+        layer_middle: document.querySelector<SVGSVGElement>("#layer-middle")!,
         layer_top: document.querySelector<SVGSVGElement>("#layer-top")!,
     };
 

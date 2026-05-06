@@ -44,12 +44,12 @@ html, body, #app {
     position: absolute;
     inset: 0;
 
-    width: 111.11%;
-    height: 111.11%;
+    width: 200%;
+    height: 200%;
 
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    left: 0;
+    top: 0;
+    transform: translate(-2.7778%, -2.7778%);
 
     pointer-events: none;
 }
@@ -58,7 +58,11 @@ html, body, #app {
     z-index: 2;
 }
 
-#layer-under {
+#layer-middle {
+    z-index: 1;
+}
+
+#layer-bottom {
     z-index: 0;
 }
 
@@ -94,13 +98,6 @@ html, body, #app {
     -webkit-touch-callout: none;
 
     --ring: 1.4cqw;
-}
-
-.cell::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border: 1px solid #999;
 }
 
 .cell.fixed > .normal {
@@ -171,40 +168,6 @@ html, body, #app {
 
 .cell.filled .center {
     display: none;
-}
-
-.cell.thick-top::before {
-    border-top-width: 2px;
-    border-top-color: black;
-}
-.cell.thick-left::before {
-    border-left-width: 2px;
-    border-left-color: black;
-}
-.cell.thick-bottom::before {
-    border-bottom-width: 2px;
-    border-bottom-color: black;
-}
-.cell.thick-right::before {
-    border-right-width: 2px;
-    border-right-color: black;
-}
-
-.cell.outside-top::before {
-    border-top-width: 4px;
-    border-top-color: black;
-}
-.cell.outside-left::before {
-    border-left-width: 4px;
-    border-left-color: black;
-}
-.cell.outside-bottom::before {
-    border-bottom-width: 4px;
-    border-bottom-color: black;
-}
-.cell.outside-right::before {
-    border-right-width: 4px;
-    border-right-color: black;
 }
 
 #controls {

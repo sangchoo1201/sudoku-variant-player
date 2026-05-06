@@ -255,6 +255,8 @@ const RuleSchema = z.discriminatedUnion("id", [
 
 export type Rule = z.infer<typeof RuleSchema>;
 
+export type SideRule = SequenceRule | QuantumRule | RangeRule;
+
 export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" |
     "[DT]" | "[QD]" | "[SG]" | "[LK]" | "[LO]" |
     "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" |
