@@ -2,11 +2,18 @@ import type {
     LinkRule,
     LotusRule,
     MetroRule,
-    PrismRule, QuantumRule, RangeRule,
+    PrismRule,
+    QuantumRule,
+    RangeRule,
     ReferenceRule,
     RootRule,
+    SegmentRule,
+    SequenceRule,
+    TemperatureRule,
     Rule,
-    RuleID, SequenceRule, SideRule, TemperatureRule
+    RuleID,
+    SideRule,
+    Position,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -97,6 +104,40 @@ const box_render: PureRenderer = function (ctx: RenderContext) {
         line.setAttribute("stroke-width", "0.06");
 
         ctx.layer_middle.appendChild(line);
+    }
+}
+
+const segment_render: Renderer<SegmentRule> = function (ctx: RenderContext, rule: SegmentRule) {
+    const encode = ([r, c]: Position) => r * 100 + c;
+    const lambda_generator: ((p: Position) => [Position, Position, Position])[] = [
+        ([r, c]) => [[r - 1, c], [c - 0.03, r], [c + 1.03, r]],
+        ([r, c]) => [[r, c - 1], [c, r - 0.03], [c, r + 1.03]],
+        ([r, c]) => [[r + 1, c], [c + 1.03, r + 1], [c - 0.03, r + 1]],
+        ([r, c]) => [[r, c + 1], [c + 1, r + 1.03], [c + 1, r - 0.03]],
+    ]
+
+    for (const cells of rule.render_state.regions) {
+        const set = new Set(cells.map(encode));
+        for (const cell of cells) {
+            for (let i = 0; i < 4; i++) {
+                const [neighbor, [x1, y1], [x2, y2]] = lambda_generator[i](cell);
+                if (set.has(encode(neighbor))) continue;
+                const line = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "line"
+                );
+
+                line.setAttribute("x1", x1.toString());
+                line.setAttribute("y1", y1.toString());
+                line.setAttribute("x2", x2.toString());
+                line.setAttribute("y2", y2.toString());
+
+                line.setAttribute("stroke", "black");
+                line.setAttribute("stroke-width", "0.06");
+
+                ctx.layer_middle.appendChild(line);
+            }
+        }
     }
 }
 
@@ -345,6 +386,7 @@ const renderers: Partial<Record<RuleID, (ctx: RenderContext, r: Rule) => void>> 
     "[R]": row_render,
     "[C]": column_render,
     "[B]": box_render,
+    "[SG]": (ctx, r) => segment_render(ctx, r as SegmentRule),
     "[LK]": (ctx, r) => link_render(ctx, r as LinkRule),
     "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
     "[MR]": (ctx, r) => metro_render(ctx, r as MetroRule),
