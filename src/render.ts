@@ -13,7 +13,7 @@ import type {
     Rule,
     RuleID,
     SideRule,
-    Position,
+    Position, PointRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -229,6 +229,32 @@ const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: Pr
     }
 }
 
+const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: PointRule) {
+    for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
+        const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
+        const d = 0.12, r3 = 3 ** 0.5;
+        const rotation = (x: number , y: number): [number, number][] => [
+            [x, y],
+            [-x / 2 - y * r3 / 2, x * r3 / 2 - y / 2],
+            [-x / 2 + y * r3 / 2, -x * r3 / 2 - y / 2],
+        ]
+        const points = rotation((c2 - c1) * d, (r2 - r1) * d)
+            .map(([x, y]) => `${x + cx},${y + cy}`);
+
+        const poly = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "polygon"
+        );
+
+        poly.setAttribute("points", points.join(' '));
+        poly.setAttribute("fill", "black");
+        poly.setAttribute("stroke", "white");
+        poly.setAttribute("stroke-width", "0.025");
+
+        ctx.layer_top.appendChild(poly);
+    }
+}
+
 const reference_render: Renderer<ReferenceRule> = function (ctx: RenderContext, rule: ReferenceRule) {
     for (const [direction, index] of rule.render_state.lines) {
         const line = document.createElementNS(
@@ -391,6 +417,7 @@ const renderers: Partial<Record<RuleID, (ctx: RenderContext, r: Rule) => void>> 
     "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
     "[MR]": (ctx, r) => metro_render(ctx, r as MetroRule),
     "[PR]": (ctx, r) => prism_render(ctx, r as PrismRule),
+    "[PT]": (ctx, r) => point_render(ctx, r as PointRule),
     "[RF]": (ctx, r) => reference_render(ctx, r as ReferenceRule),
     "[RT]": (ctx, r) => root_render(ctx, r as RootRule),
     "[TM]": (ctx, r) => temperature_render(ctx, r as TemperatureRule),
