@@ -206,6 +206,31 @@ const RootRuleSchema = z.object({
 
 export type RootRule = z.infer<typeof RootRuleSchema>;
 
+const PointRuleSchema = z.object({
+    id: z.literal("[PT]"),
+    render_state: z.object({
+        edges: z.array(
+            z.tuple([PositionSchema, PositionSchema])
+        ),
+    }),
+});
+
+export type PointRule = z.infer<typeof PointRuleSchema>;
+
+const StencilRuleSchema = z.object({
+    id: z.literal("[ST]"),
+    render_state: z.object({
+        pieces: z.array(
+            z.object({
+                cells: z.array(PositionSchema),
+                values: z.record(z.string(), z.number().optional()),
+            })
+        ),
+    }),
+});
+
+export type StencilRule = z.infer<typeof StencilRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -224,6 +249,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     PrismRuleSchema,
     TemperatureRuleSchema,
     RootRuleSchema,
+    PointRuleSchema,
+    StencilRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

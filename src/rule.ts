@@ -12,13 +12,13 @@ import type {
     ReferenceRule,
     PrismRule,
     TemperatureRule,
-    RootRule,
+    RootRule, PointRule, StencilRule,
 } from "./schema.ts";
 
 export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" |
     "[DT]" | "[QD]" | "[SG]" | "[LK]" | "[LO]" |
     "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" |
-    "[SQ]" | "[TM]" | "[RT]";
+    "[SQ]" | "[TM]" | "[RT]" | "[PT]" | "[ST]";
 
 type RuleCheckingResult = [true, []] | [false, Position[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
@@ -423,6 +423,79 @@ const root_check: RuleCheckingFunction<RootRule> = function (
     return errors.result();
 }
 
+const point_check: RuleCheckingFunction<PointRule> = function (
+    solving_state: SolvingState, rule: PointRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
+        const v1 = solving_state.board[r1][c1].number;
+        const v2 = solving_state.board[r2][c2].number;
+        if (v1 === null || v2 === null) continue;
+
+        if (v1 >= v2) {
+            errors.add([r1, c1]);
+            errors.add([r2, c2]);
+        }
+    }
+
+    return errors.result();
+}
+
+function match_piece(solving_state: SolvingState, positions: [Position, number][]): RuleCheckingResult {
+    const max_row = positions.reduce((mx, [[r, _c], _v]) => Math.max(mx, r), 0);
+    const max_col = positions.reduce((mx, [[_r, c], _v]) => Math.max(mx, c), 0);
+
+    for (let r = 0; r < 9 - max_row; r++) {
+        for (let c = 0; c < 9 - max_col; c++) {
+            if (positions.every(
+                ([[dr, dc], v]) =>
+                    solving_state.board[r + dr][c + dc].number === v
+            )) {
+                return [false, positions.map(([[dr, dc], _]) => [r + dr, c + dc])];
+            }
+        }
+    }
+    return [true, []];
+}
+
+const stencil_check: RuleCheckingFunction<StencilRule> = function (
+    solving_state: SolvingState, rule: StencilRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const {values} of rule.render_state.pieces) {
+        const positions: [Position, number][] = [];
+        let max_row = 0, max_col = 0;
+        for (const key in values) {
+            const [r, c] = key.split(',').map(Number);
+            const v = values[key]!;
+            max_row = Math.max(max_row, r);
+            max_col = Math.max(max_col, c);
+            positions.push([[r, c], v]);
+        }
+
+        const transforms: (([p, n]: [Position, number]) => [Position, number])[] = [
+            ([[r, c], n]) => [[r, c], n],
+            ([[r, c], n]) => [[max_row - r, c], n],
+            ([[r, c], n]) => [[r, max_col - c], n],
+            ([[r, c], n]) => [[max_row - r, max_col - c], n],
+        ];
+
+        const transpose: (b: boolean) => ([p, n]: [Position, number]) => [Position, number] =
+            (b) =>
+                ([[r, c], n]) => b ? [[c, r], n] : [[r, c], n];
+
+        for (let i = 0; i < 8; i++) {
+            const new_positions = positions.map(transforms[i % 4]);
+            const [success, error] = match_piece(solving_state, new_positions.map(transpose(i >= 4)));
+            if (!success) errors.add_all(error);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -441,6 +514,8 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[SQ]": (s: SolvingState, r: Rule) => sequence_check(s, r as SequenceRule),
     "[TM]": (s: SolvingState, r: Rule) => temperature_check(s, r as TemperatureRule),
     "[RT]": (s: SolvingState, r: Rule) => root_check(s, r as RootRule),
+    "[PT]": (s: SolvingState, r: Rule) => point_check(s, r as PointRule),
+    "[ST]": (s: SolvingState, r: Rule) => stencil_check(s, r as StencilRule),
 } as const;
 
 export function check_all(
