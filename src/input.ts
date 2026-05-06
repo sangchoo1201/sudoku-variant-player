@@ -182,25 +182,26 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
     }
 
     window.addEventListener('keydown', (e) => {
-        if (e.ctrlKey || e.metaKey) e.preventDefault();
+        const control = e.ctrlKey || e.metaKey;
 
         if (e.repeat) return; // 꾹 누름 방지
 
         let mode = input_mode;
         if (e.shiftKey) mode = InputMode.Corner;
-        if (e.ctrlKey || e.metaKey) mode = InputMode.Center;
+        if (control) mode = InputMode.Center;
 
         const code = e.code;
 
-        // FOR DEBUGGING
-        if (code === 'Enter') {
-            let result = "";
-            for (let i = 0; i < 9; i++) {
-                for (let j = 0; j < 9; j++) {
-                    result += solving_state.board[i][j].number || 0;
+        // shortcuts
+        if (control && !input_alphabet) {
+            if (code === 'KeyA') {
+                e.preventDefault();
+                for (let r = 0; r < 9; r++) {
+                    for (let c = 0; c < 9; c++) {
+                        add_selection([r, c], false);
+                    }
                 }
             }
-            console.log(result);
         }
 
         // 방향키 이동
@@ -223,6 +224,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
         for (const keyword of ['Digit', 'Numpad', 'Key']) {
             if (keyword === 'Key' && (mode === InputMode.Normal || !input_alphabet)) continue;
             if (code.startsWith(keyword)) {
+                e.preventDefault();
                 const key = code.slice(keyword.length);
                 if (mode === InputMode.Normal && key == '0') continue;
                 apply_number(key, mode, !is_common(key, mode));
@@ -236,6 +238,31 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
 
         const [_, errors] = check_all(solving_state, rules);
         show_errors(errors);
+    });
+
+    window.addEventListener("copy", (e) => {
+        e.preventDefault();
+
+        let texts: string[][] = [];
+        let mn_row = 8, mx_row = 0, mn_col = 8, mx_col = 0;
+        for (let r = 0; r < 9; r++) {
+            texts.push([]);
+            for (let c = 0; c < 9; c++) {
+                if (!selected.has(encode([r, c]))) {
+                    texts[r].push(" ");
+                    continue;
+                }
+                mn_row = Math.min(mn_row, r);
+                mx_row = Math.max(mx_row, r);
+                mn_col = Math.min(mn_col, c);
+                mx_col = Math.max(mx_col, c);
+                texts[r].push((solving_state.board[r][c].number ?? 0).toString());
+            }
+        }
+        const text = texts.slice(mn_row, mx_row + 1).map(s => s.slice(mn_col, mx_col + 1)
+            .join("")).join("\n");
+
+        e.clipboardData?.setData("text/plain", text);
     });
 
     window.addEventListener('mousedown', (e) => {

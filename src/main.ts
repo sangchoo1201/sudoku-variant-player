@@ -169,6 +169,8 @@ const cell_map = setup_grid(puzzle_data);
 render_all(puzzle_data.rules);
 setup_selection(cell_map, solving_state, puzzle_data.rules);
 
+window.getSelection()?.selectAllChildren(document.body);
+
 if (import.meta.env.DEV) {
     (globalThis as any).main = { solving_state }
 }
