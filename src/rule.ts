@@ -12,13 +12,8 @@ import type {
     ReferenceRule,
     PrismRule,
     TemperatureRule,
-    RootRule, PointRule, StencilRule,
+    RootRule, PointRule, StencilRule, RuleID,
 } from "./schema.ts";
-
-export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" |
-    "[DT]" | "[QD]" | "[SG]" | "[LK]" | "[LO]" |
-    "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" |
-    "[SQ]" | "[TM]" | "[RT]" | "[PT]" | "[ST]";
 
 type RuleCheckingResult = [true, []] | [false, Position[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;

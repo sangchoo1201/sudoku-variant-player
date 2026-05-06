@@ -255,6 +255,11 @@ const RuleSchema = z.discriminatedUnion("id", [
 
 export type Rule = z.infer<typeof RuleSchema>;
 
+export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" |
+    "[DT]" | "[QD]" | "[SG]" | "[LK]" | "[LO]" |
+    "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" |
+    "[SQ]" | "[TM]" | "[RT]" | "[PT]" | "[ST]";
+
 export const PuzzleDataSchema = z.object({
     id: z.string(),
     difficulty: z.union([z.number(), z.literal("?")]),

@@ -1,5 +1,5 @@
 import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
-import {setup_grid} from "./render.ts";
+import {render_all, setup_grid} from "./render.ts";
 import {setup_selection} from "./input.ts";
 
 const default_data: PuzzleData = {
@@ -83,6 +83,7 @@ const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
 const cell_map = setup_grid(puzzle_data);
+render_all(puzzle_data.rules);
 setup_selection(cell_map, solving_state, puzzle_data.rules);
 
 if (import.meta.env.DEV) {

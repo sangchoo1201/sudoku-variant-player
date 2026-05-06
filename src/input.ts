@@ -1,5 +1,5 @@
-import type {Position, Rule, SolvingState} from "./schema.ts";
-import {check_all, type RuleID} from "./rule.ts";
+import type {Position, Rule, SolvingState, RuleID} from "./schema.ts";
+import {check_all} from "./rule.ts";
 import type {CellType} from "./render.ts";
 
 const direction_map: Partial<Record<string, [number, number]>> = {
@@ -224,6 +224,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
             if (keyword === 'Key' && (mode === InputMode.Normal || !input_alphabet)) continue;
             if (code.startsWith(keyword)) {
                 const key = code.slice(keyword.length);
+                if (mode === InputMode.Normal && key == '0') continue;
                 apply_number(key, mode, !is_common(key, mode));
             }
         }

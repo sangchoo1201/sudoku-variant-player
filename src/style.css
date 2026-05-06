@@ -23,13 +23,43 @@ html, body, #app {
     container-type: size;
 }
 
+#grid {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
 #main-grid {
+    position: relative;
     display: grid;
     grid-template-columns: repeat(9, 1fr);
     grid-template-rows: repeat(9, 1fr);
 
     width: 100%;
     height: 100%;
+    z-index: 1;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+
+    width: 111.11%;
+    height: 111.11%;
+
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+
+    pointer-events: none;
+}
+
+#layer-top {
+    z-index: 2;
+}
+
+#layer-under {
+    z-index: 0;
 }
 
 #right-clues {
@@ -54,8 +84,6 @@ html, body, #app {
 }
 
 .cell {
-    border: 1px solid #999;
-
     display: flex;
     align-items: center;
     justify-content: center;
@@ -65,7 +93,14 @@ html, body, #app {
     -webkit-user-select: none;
     -webkit-touch-callout: none;
 
-    --ring: 1cqw;
+    --ring: 1.4cqw;
+}
+
+.cell::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid #999;
 }
 
 .cell.fixed > .normal {
@@ -95,6 +130,7 @@ html, body, #app {
     font-size: 6cqw;
     font-weight: bold;
     color: rgb(29, 106, 229);
+    transform: translateY(-5%);
 }
 
 .corner {
@@ -113,7 +149,7 @@ html, body, #app {
     align-items: center;
     justify-content: center;
 
-    font-size: 2.5cqw;  /* ⭐ 핵심: 상대 크기 */
+    font-size: 2.8cqw;  /* ⭐ 핵심: 상대 크기 */
     color: rgb(29, 106, 229);
 }
 
@@ -137,10 +173,39 @@ html, body, #app {
     display: none;
 }
 
-.thick-top { border-top: 3px solid black; }
-.thick-left { border-left: 3px solid black; }
-.thick-bottom { border-bottom: 3px solid black; }
-.thick-right { border-right: 3px solid black; }
+.cell.thick-top::before {
+    border-top-width: 2px;
+    border-top-color: black;
+}
+.cell.thick-left::before {
+    border-left-width: 2px;
+    border-left-color: black;
+}
+.cell.thick-bottom::before {
+    border-bottom-width: 2px;
+    border-bottom-color: black;
+}
+.cell.thick-right::before {
+    border-right-width: 2px;
+    border-right-color: black;
+}
+
+.cell.outside-top::before {
+    border-top-width: 4px;
+    border-top-color: black;
+}
+.cell.outside-left::before {
+    border-left-width: 4px;
+    border-left-color: black;
+}
+.cell.outside-bottom::before {
+    border-bottom-width: 4px;
+    border-bottom-color: black;
+}
+.cell.outside-right::before {
+    border-right-width: 4px;
+    border-right-color: black;
+}
 
 #controls {
     align-self: center;
