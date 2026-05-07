@@ -387,6 +387,12 @@ export function setup_selection(
         }, 30);
     });
 
+    window.addEventListener("blur", (_) => {
+        modifiers.shift = false;
+        modifiers.control = false;
+        modifiers.alt = false;
+    })
+
     window.addEventListener("copy", (e) => {
         e.preventDefault();
 
