@@ -226,6 +226,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
             if (code.startsWith(keyword)) {
                 e.preventDefault();
                 const key = code.slice(keyword.length);
+                if (keyword === 'Numpad' && !('0' <= key && key <= '9')) continue;
                 if (mode === InputMode.Normal && key == '0') continue;
                 apply_number(key, mode, !is_common(key, mode));
             }
