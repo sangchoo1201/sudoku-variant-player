@@ -28,6 +28,11 @@ let drag_mode: DragMode = DragMode.None;
 let input_mode: InputMode = InputMode.Normal;
 let input_alphabet = false;
 let selected = new Set<number>();
+const modifiers = {
+    shift: false,
+    control: false,
+    alt: false,
+};
 const encode = ([r, c]: Position) => r * 100 + c;
 
 function entries<T extends object>(obj: T) {
@@ -107,7 +112,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
 
     function update_center(center: HTMLDivElement, set: Record<string, true>) {
         const sorted_keys = Object.keys(set).sort();
-        center.textContent = sorted_keys.join('');
+        center.textContent = sorted_keys.join('').slice(0, 8);
     }
 
     function apply_number(value: string, mode: InputMode, add: boolean = true) {
@@ -182,18 +187,22 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
     }
 
     window.addEventListener('keydown', (e) => {
-        const control = e.ctrlKey || e.metaKey;
-
         if (e.repeat) return; // 꾹 누름 방지
-
-        let mode = input_mode;
-        if (e.shiftKey) mode = InputMode.Corner;
-        if (control) mode = InputMode.Center;
 
         const code = e.code;
 
+        if (code === 'ShiftLeft' || code === 'ShiftRight') modifiers.shift = true;
+        if (code === 'ControlLeft' || code === 'ControlRight' || code === 'MetaLeft' || code === 'MetaRight') modifiers.control = true;
+        if (code === 'AltLeft' || code === 'AltRight') modifiers.alt = true;
+
+        let mode = input_mode;
+        if (modifiers.shift) mode = InputMode.Corner;
+        if (modifiers.control) mode = InputMode.Center;
+        let alphabet = input_alphabet;
+        if (modifiers.alt) alphabet = true;
+
         // shortcuts
-        if (control && !input_alphabet) {
+        if (modifiers.control && !alphabet) {
             if (code === 'KeyA') {
                 e.preventDefault();
                 for (let r = 0; r < 9; r++) {
@@ -214,7 +223,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
             const [dr, dc] = direction;
             const nr = (r + dr + 9) % 9, nc = (c + dc + 9) % 9;
 
-            if (!(e.ctrlKey || e.metaKey || e.shiftKey)) {
+            if (!(modifiers.shift || modifiers.control)) {
                 reset_selection();
             }
             add_selection([nr, nc]);
@@ -222,7 +231,7 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
 
         // 숫자 입력
         for (const keyword of ['Digit', 'Numpad', 'Key']) {
-            if (keyword === 'Key' && (mode === InputMode.Normal || !input_alphabet)) continue;
+            if (keyword === 'Key' && (mode === InputMode.Normal || !alphabet)) continue;
             if (code.startsWith(keyword)) {
                 e.preventDefault();
                 const key = code.slice(keyword.length);
@@ -239,6 +248,15 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
 
         const [_, errors] = check_all(solving_state, rules);
         show_errors(errors);
+    });
+
+    window.addEventListener("keyup", (e) => {
+        const code = e.code;
+        setTimeout(() => {
+            if (code === 'ShiftLeft' || code === 'ShiftRight') modifiers.shift = false;
+            if (code === 'ControlLeft' || code === 'ControlRight' || code === 'MetaLeft' || code === 'MetaRight') modifiers.control = false;
+            if (code === 'AltLeft' || code === 'AltRight') modifiers.alt = false;
+        }, 30);
     });
 
     window.addEventListener("copy", (e) => {

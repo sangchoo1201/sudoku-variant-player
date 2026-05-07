@@ -137,6 +137,7 @@ html, body, #app {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
+    line-height: 100%;
 
     pointer-events: none; /* 클릭 방해 안 하게 */
 }
