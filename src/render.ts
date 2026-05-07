@@ -19,7 +19,12 @@ import type {
 type RenderContext = {
     layer_bottom: SVGSVGElement,
     layer_middle: SVGSVGElement,
-    layer_top: SVGSVGElement,
+    layer_top: {
+        parent: SVGSVGElement,
+        prism: SVGGElement,
+        link: SVGGElement,
+        point: SVGGElement,
+    },
 }
 
 type PureRenderer = (ctx: RenderContext) => void;
@@ -149,13 +154,13 @@ const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: Link
         );
 
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
-        const d = 0.12;
+        const d = 0.13;
         poly.setAttribute("points", `${cx},${cy - d} ${cx + d},${cy} ${cx},${cy + d} ${cx - d},${cy}`);
         poly.setAttribute("fill", "white");
         poly.setAttribute("stroke", "black");
         poly.setAttribute("stroke-width", "0.03");
 
-        ctx.layer_top.appendChild(poly);
+        ctx.layer_top.link.appendChild(poly);
     }
 }
 
@@ -205,7 +210,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
 const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: PrismRule) {
     for (const [r1, c1, r2, c2, type] of rule.render_state.edges) {
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
-        const d = 0.15, r3 = 3 ** 0.5, dx = d / 2 * r3, dy = d / 2;
+        const d = 0.18, r3 = 3 ** 0.5, dx = d / 2 * r3, dy = d / 2;
         const points = [
             `${cx},${cy - d}`,
             `${cx + dx},${cy - dy}`,
@@ -225,14 +230,14 @@ const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: Pr
         poly.setAttribute("stroke", "white");
         poly.setAttribute("stroke-width", "0.01");
 
-        ctx.layer_top.appendChild(poly);
+        ctx.layer_top.prism.appendChild(poly);
     }
 }
 
 const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: PointRule) {
     for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
-        const d = 0.12, r3 = 3 ** 0.5;
+        const d = 0.11, r3 = 3 ** 0.5;
         const rotation = (x: number , y: number): [number, number][] => [
             [x, y],
             [-x / 2 - y * r3 / 2, x * r3 / 2 - y / 2],
@@ -251,7 +256,7 @@ const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: Po
         poly.setAttribute("stroke", "white");
         poly.setAttribute("stroke-width", "0.025");
 
-        ctx.layer_top.appendChild(poly);
+        ctx.layer_top.point.appendChild(poly);
     }
 }
 
@@ -430,7 +435,12 @@ export function render_all(rules: Rule[]) {
     const ctx: RenderContext = {
         layer_bottom: document.querySelector<SVGSVGElement>("#layer-bottom")!,
         layer_middle: document.querySelector<SVGSVGElement>("#layer-middle")!,
-        layer_top: document.querySelector<SVGSVGElement>("#layer-top")!,
+        layer_top: {
+            parent: document.querySelector<SVGSVGElement>("#layer-top")!,
+            prism: document.querySelector<SVGGElement>("#layer-top-prism")!,
+            link: document.querySelector<SVGGElement>("#layer-top-link")!,
+            point: document.querySelector<SVGGElement>("#layer-top-point")!,
+        },
     };
 
     for (const rule of rules) {
