@@ -7,6 +7,7 @@ export type Position = z.infer<typeof PositionSchema>;
 const FixedCellStateSchema = z.object({
     fixed: z.literal(true),
     number: z.number(),
+    color: z.record(z.string(), z.literal(true)),
 });
 
 const EmptyCellStateSchema = z.object({
@@ -14,6 +15,7 @@ const EmptyCellStateSchema = z.object({
     number: z.number().nullable(),
     corner: z.record(z.string(), z.literal(true)),
     center: z.record(z.string(), z.literal(true)),
+    color: z.record(z.string(), z.literal(true)),
 });
 
 const CellStateSchema = z.discriminatedUnion("fixed", [

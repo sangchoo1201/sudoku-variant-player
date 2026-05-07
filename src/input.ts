@@ -2,13 +2,6 @@ import type {Position, Rule, SolvingState, RuleID} from "./schema.ts";
 import {check_all} from "./rule.ts";
 import type {CellType} from "./main.ts";
 
-const direction_map: Partial<Record<string, [number, number]>> = {
-    "ArrowUp": [-1, 0],
-    "ArrowLeft": [0, -1],
-    "ArrowDown": [1, 0],
-    "ArrowRight": [0, 1],
-} as const;
-
 const DragMode = {
     None: "none",
     Add: "add",
@@ -20,8 +13,29 @@ const InputMode = {
     Normal: "normal",
     Corner: "corner",
     Center: "center",
+    Color: "color",
 } as const;
 type InputMode = typeof InputMode[keyof typeof InputMode];
+
+const direction_map: Partial<Record<string, [number, number]>> = {
+    "ArrowUp": [-1, 0],
+    "ArrowLeft": [0, -1],
+    "ArrowDown": [1, 0],
+    "ArrowRight": [0, 1],
+} as const;
+
+const color_map: string[] = [
+    "",
+    "rgba(166, 219, 87, 0.5)",
+    "rgba(221, 103, 234, 0.5)",
+    "rgba(219, 132, 26, 0.5)",
+    "rgba(239, 27, 23, 0.5)",
+    "rgba(249, 227, 29, 0.5)",
+    "rgba(28, 134, 239, 0.5)",
+    "rgba(170, 170, 170, 0.5)",
+    "rgba(85, 85, 85, 0.5)",
+    "rgba(0, 0, 0, 0.5)",
+];
 
 let last_cell: HTMLDivElement | null = null;
 let drag_mode: DragMode = DragMode.None;
@@ -37,6 +51,46 @@ const encode = ([r, c]: Position) => r * 100 + c;
 
 function entries<T extends object>(obj: T) {
     return Object.entries(obj) as [keyof T, T[keyof T]][];
+}
+
+function polar_to_cartesian(cx: number, cy: number, r: number, angle: number) {
+    const rad = angle * Math.PI / 180;
+    return [cx + r * Math.cos(rad), cy - r * Math.sin(rad)];
+}
+
+function create_polygons(colors: number[]): SVGElement[] {
+    const n = colors.length;
+
+    if (n === 1) {
+        const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle"
+        );
+        circle.setAttribute("cx", "0.5");
+        circle.setAttribute("cy", "0.5");
+        circle.setAttribute("r", "1");
+        circle.setAttribute("fill", color_map[colors[0]]);
+        return [circle];
+    }
+
+    const paths: SVGPathElement[] = [];
+    for (const [i, color] of colors.entries()) {
+        const path = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "path"
+        );
+        const [x1, y1] = polar_to_cartesian(0.5, 0.5, 1, 75 - 360 / n * i);
+        const [x2, y2] = polar_to_cartesian(0.5, 0.5, 1, 75 - 360 / n * (i + 1));
+        path.setAttribute('d', `
+            M 0.5 0.5
+            L ${x1} ${y1}
+            A 1 1 0 0 1 ${x2} ${y2}
+            Z
+        `);
+        path.setAttribute("fill", color_map[color]);
+        paths.push(path);
+    }
+    return paths;
 }
 
 export function setup_selection(
@@ -85,6 +139,9 @@ export function setup_selection(
         for (let k of selected) {
             const r = Math.floor(k / 100), c = k % 100;
             const cell = solving_state.board[r][c];
+            if (mode === InputMode.Color && !cell.color[value]) {
+                return false;
+            }
             if (cell.fixed) continue;
             switch (mode) {
                 case InputMode.Normal:
@@ -117,10 +174,27 @@ export function setup_selection(
         center.textContent = sorted_keys.join('').slice(0, 8);
     }
 
+    function update_color(color: SVGGElement, set: Record<string, true>) {
+        const sorted_keys = Object.keys(set).map(Number).sort();
+        color.replaceChildren();
+        const polygons = create_polygons(sorted_keys);
+        for (const polygon of polygons) {
+            color.appendChild(polygon);
+        }
+    }
+
     function apply_number(value: string, mode: InputMode, add: boolean = true) {
         selected.forEach(k => {
             const r = Math.floor(k / 100), c = k % 100;
             const cell = solving_state.board[r][c];
+            if (mode === InputMode.Color) {
+                if (add) {
+                    cell.color[value] = true;
+                } else {
+                    delete cell.color[value];
+                }
+                update_color(cell_map[r][c].color, cell.color);
+            }
             if (cell.fixed) return;
             if (mode === InputMode.Normal) {
                 if (add) {
@@ -153,21 +227,60 @@ export function setup_selection(
         });
     }
 
-    function clear_number() {
+    function clear_number(prioritized?: InputMode) {
+        const has_mode: Record<InputMode, boolean> = {
+            [InputMode.Normal]: false,
+            [InputMode.Center]: false,
+            [InputMode.Corner]: false,
+            [InputMode.Color]: false,
+        };
         selected.forEach(k => {
             const r = Math.floor(k / 100), c = k % 100;
             const cell = solving_state.board[r][c];
+            if (Object.keys(cell.color).length !== 0) has_mode[InputMode.Color] = true;
             if (cell.fixed) return;
-            if (cell.number !== null) {
+            if (cell.number !== null) has_mode[InputMode.Normal] = true;
+            if (Object.keys(cell.center).length !== 0) has_mode[InputMode.Center] = true;
+            if (Object.keys(cell.corner).length !== 0) has_mode[InputMode.Corner] = true;
+        });
+
+        let mode: InputMode | null = null;
+        if (prioritized && has_mode[prioritized]) {
+            mode = prioritized;
+        } else {
+            for (const m of [InputMode.Normal, InputMode.Center, InputMode.Corner, InputMode.Color]) {
+                if (has_mode[m]) {
+                    mode = m;
+                    break;
+                }
+            }
+        }
+        if (mode === null) return;
+
+        selected.forEach(k => {
+            const r = Math.floor(k / 100), c = k % 100;
+            const cell = solving_state.board[r][c];
+            if (mode === InputMode.Normal) {
+                if (cell.fixed || cell.number === null) return;
                 cell.number = null;
                 cell_map[r][c].normal.textContent = '';
                 cell_map[r][c].cell.classList.remove('filled');
                 return;
             }
-            cell.corner = {};
-            update_corner(cell_map[r][c].corner, cell.corner);
-            cell.center = {};
-            update_center(cell_map[r][c].center, cell.center);
+            if (mode === InputMode.Center) {
+                if (cell.fixed) return;
+                cell.center = {};
+                update_center(cell_map[r][c].center, cell.center);
+            }
+            if (mode === InputMode.Corner) {
+                if (cell.fixed) return;
+                cell.corner = {};
+                update_corner(cell_map[r][c].corner, cell.corner);
+            }
+            if (mode === InputMode.Color) {
+                cell.color = {};
+                update_color(cell_map[r][c].color, cell.color);
+            }
         })
     }
 
@@ -212,6 +325,7 @@ export function setup_selection(
         let mode = input_mode;
         if (modifiers.shift) mode = InputMode.Corner;
         if (modifiers.control) mode = InputMode.Center;
+        if (modifiers.shift && modifiers.control) mode = InputMode.Color;
         let alphabet = input_alphabet;
         if (modifiers.alt) alphabet = true;
 
@@ -250,14 +364,14 @@ export function setup_selection(
                 e.preventDefault();
                 const key = code.slice(keyword.length);
                 if (keyword === 'Numpad' && !('0' <= key && key <= '9')) continue;
-                if (mode === InputMode.Normal && key == '0') continue;
+                if ((mode === InputMode.Color || mode === InputMode.Normal) && !('1' <= key && key <= '9')) continue;
                 apply_number(key, mode, !is_common(key, mode));
             }
         }
 
         // 삭제
         if (code === 'Backspace' || code === 'Delete') {
-            clear_number()
+            clear_number();
         }
 
         const [_, errors] = check_all(solving_state, rules);

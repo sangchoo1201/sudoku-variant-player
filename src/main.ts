@@ -57,11 +57,13 @@ function generate_default_solving_state(puzzle_data: PuzzleData): SolvingState {
                     number: null,
                     corner: {},
                     center: {},
+                    color: {},
                 });
             } else {
                 board_state[i].push({
                     fixed: true,
                     number: value,
+                    color: {},
                 });
             }
         }
@@ -78,6 +80,7 @@ const grid = document.getElementById('grid')!;
 const main_grid = document.getElementById('main-grid')!;
 const right_clue = document.getElementById('right-clues')!;
 const bottom_clue = document.getElementById('bottom-clues')!;
+const memo_color = document.getElementById('memo-color')!;
 const corner_order = [0, 4, 1, 6, 8, 7, 2, 5, 3] as const;
 
 export type CellType = {
@@ -85,6 +88,7 @@ export type CellType = {
     normal: HTMLDivElement,
     corner: HTMLDivElement[],
     center: HTMLDivElement,
+    color: SVGGElement,
 }
 
 function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], HTMLDivElement[]] {
@@ -134,6 +138,14 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
             center.classList.add('center');
             cell.appendChild(center);
 
+            const g = document.createElementNS(
+                'http://www.w3.org/2000/svg',
+                'g'
+            );
+            g.setAttribute('transform', `translate(${c} ${r})`);
+            g.setAttribute('clip-path', 'url(#cell-clip)');
+            memo_color.appendChild(g);
+
             cell.dataset.row = r.toString();
             cell.dataset.col = c.toString();
 
@@ -150,6 +162,7 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
                 normal: normal,
                 corner: corner_cells,
                 center: center,
+                color: g,
             };
         }
     }
