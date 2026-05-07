@@ -39,7 +39,9 @@ function entries<T extends object>(obj: T) {
     return Object.entries(obj) as [keyof T, T[keyof T]][];
 }
 
-export function setup_selection(cell_map: CellType[][], solving_state: SolvingState, rules: Rule[]) {
+export function setup_selection(
+    cell_map: CellType[][], right: HTMLDivElement[], bottom: HTMLDivElement[], solving_state: SolvingState, rules: Rule[]
+) {
     const grid = document.getElementById('main-grid')!;
 
     function add_selection(pos: Position, is_last: boolean = true) {
@@ -170,16 +172,28 @@ export function setup_selection(cell_map: CellType[][], solving_state: SolvingSt
     }
 
     function show_errors(errors: Partial<Record<RuleID, Position[]>>) {
-        for (let r = 0; r < 9; r++) {
-            for (let c = 0; c < 9; c++) {
-                const cell = cell_map[r][c].cell;
+        for (let i = 0; i < 9; i++) {
+            for (let j = 0; j < 9; j++) {
+                const cell = cell_map[i][j].cell;
                 cell.classList.remove('error');
             }
+            right[i].classList.remove('error');
+            bottom[i].classList.remove('error');
         }
 
         for (const [_, error] of entries(errors)) {
             if (error === undefined) continue;
             for (const [r, c] of error) {
+                if (r === 9) {
+                    const side = bottom[c];
+                    side.classList.add('error');
+                    continue;
+                }
+                if (c === 9) {
+                    const side = right[r];
+                    side.classList.add('error');
+                    continue;
+                }
                 const cell = cell_map[r][c].cell;
                 cell.classList.add('error');
             }

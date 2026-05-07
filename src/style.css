@@ -87,6 +87,14 @@ html, body, #app {
     display: flex;
 }
 
+.side {
+    flex: 1;
+}
+
+.side.error {
+    background: rgba(255, 0, 0, 0.3);
+}
+
 .cell {
     display: flex;
     align-items: center;

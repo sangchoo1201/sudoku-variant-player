@@ -87,7 +87,7 @@ export type CellType = {
     center: HTMLDivElement,
 }
 
-function setup_grid(puzzle_data: PuzzleData) {
+function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], HTMLDivElement[]] {
     let mx_side_length = 0;
     for (const rule of puzzle_data.rules) {
         if (rule.id === "[QT]" || rule.id === "[RG]" || rule.id === "[SQ]") {
@@ -99,7 +99,6 @@ function setup_grid(puzzle_data: PuzzleData) {
     const mx_resize = mx_side_length / 2.8;
     const side_size = `${mx_resize * 100 / (mx_resize + 9)}%`;
     const main_size = `${900 / (mx_resize + 9)}%`
-
 
     grid.style.width = main_size;
     grid.style.height = main_size;
@@ -154,7 +153,23 @@ function setup_grid(puzzle_data: PuzzleData) {
             };
         }
     }
-    return cell_map;
+
+    const right: HTMLDivElement[] = [];
+    const bottom: HTMLDivElement[] = [];
+
+    for (let i = 0; i < 9; i++) {
+        const r = document.createElement('div');
+        r.classList.add('side');
+        right_clue.appendChild(r);
+        right.push(r);
+
+        const b = document.createElement('div');
+        b.classList.add('side');
+        bottom_clue.appendChild(b);
+        bottom.push(b);
+    }
+
+    return [cell_map, right, bottom];
 }
 
 const query_string = window.location.search;
@@ -165,9 +180,9 @@ const result = PuzzleDataSchema.safeParse(parsed_data);
 const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
-const cell_map = setup_grid(puzzle_data);
+const [cell_map, right, bottom] = setup_grid(puzzle_data);
 render_all(puzzle_data.rules);
-setup_selection(cell_map, solving_state, puzzle_data.rules);
+setup_selection(cell_map, right, bottom, solving_state, puzzle_data.rules);
 
 window.getSelection()?.selectAllChildren(document.body);
 
