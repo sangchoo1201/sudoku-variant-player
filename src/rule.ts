@@ -221,18 +221,11 @@ const sequence_check: RuleCheckingFunction<SequenceRule> = function (
     for (const [direction, index, sequence] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
 
-        const line: number[] = [];
-        for (let i = 0; i < 9; i++) {
+        let j = 0;
+        for (let i = 0; i < 9 && j < sequence.length; i++) {
             const [r, c] = get_pos(i);
             const v = solving_state.board[r][c].number;
-            if (v !== null) line.push(v);
-        }
-
-        if (line.length < sequence.length) continue;
-
-        let j = 0;
-        for (let i = 0; i < line.length && j < sequence.length; i++) {
-            if (line[i] == sequence[j]) j++;
+            if (v === null || v === sequence[j]) j++;
         }
 
         if (j !== sequence.length) {
