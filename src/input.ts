@@ -25,16 +25,16 @@ const direction_map: Partial<Record<string, [number, number]>> = {
 } as const;
 
 const color_map: string[] = [
-    "",
+    "rgba(0, 0, 0, 0.5)",
     "rgba(166, 219, 87, 0.5)",
     "rgba(221, 103, 234, 0.5)",
     "rgba(219, 132, 26, 0.5)",
     "rgba(239, 27, 23, 0.5)",
     "rgba(249, 227, 29, 0.5)",
     "rgba(28, 134, 239, 0.5)",
-    "rgba(170, 170, 170, 0.5)",
-    "rgba(85, 85, 85, 0.5)",
-    "rgba(0, 0, 0, 0.5)",
+    "rgba(191, 191, 191, 0.5)",
+    "rgba(127, 127, 127, 0.5)",
+    "rgba(63, 63, 63, 0.5)",
 ];
 
 let last_cell: HTMLDivElement | null = null;
@@ -338,6 +338,7 @@ export function setup_selection(
                         add_selection([r, c], false);
                     }
                 }
+                return;
             }
         }
 
@@ -355,16 +356,17 @@ export function setup_selection(
                 reset_selection();
             }
             add_selection([nr, nc]);
+            return;
         }
 
         // 숫자 입력
         for (const keyword of ['Digit', 'Numpad', 'Key']) {
-            if (keyword === 'Key' && (mode === InputMode.Normal || !alphabet)) continue;
+            if (keyword === 'Key' && (mode === InputMode.Normal || mode === InputMode.Color || !alphabet)) continue;
             if (code.startsWith(keyword)) {
                 e.preventDefault();
                 const key = code.slice(keyword.length);
                 if (keyword === 'Numpad' && !('0' <= key && key <= '9')) continue;
-                if ((mode === InputMode.Color || mode === InputMode.Normal) && !('1' <= key && key <= '9')) continue;
+                if (mode === InputMode.Normal && key === '0') continue;
                 apply_number(key, mode, !is_common(key, mode));
             }
         }
