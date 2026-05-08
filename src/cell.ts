@@ -101,6 +101,13 @@ function create_polygons(colors: number[]): SVGElement[] {
     return paths;
 }
 
+const mode_buttons: Record<InputMode, HTMLButtonElement> = {
+    [InputMode.Normal]: document.querySelector<HTMLButtonElement>("#button-normal")!,
+    [InputMode.Corner]: document.querySelector<HTMLButtonElement>("#button-corner")!,
+    [InputMode.Center]: document.querySelector<HTMLButtonElement>("#button-center")!,
+    [InputMode.Color]: document.querySelector<HTMLButtonElement>("#button-color")!,
+};
+
 let last_cell: HTMLDivElement | null = null;
 let default_input_mode: InputMode = InputMode.Normal;
 let input_mode: InputMode | null = null;
@@ -121,12 +128,25 @@ export function init_cell_map(map: CellType[][], r: HTMLDivElement[], b: HTMLDiv
     solving_state = state;
 }
 
+export function show_current_input_mode() {
+    const mode = get_input_mode();
+    for (const [m, button] of Object.entries(mode_buttons) as [InputMode, HTMLButtonElement][]) {
+        if (m === mode) {
+            button.classList.add("selected-mode");
+        } else {
+            button.classList.remove("selected-mode");
+        }
+    }
+}
+
 export function set_default_input_mode(mode: InputMode) {
     default_input_mode = mode;
+    show_current_input_mode();
 }
 
 export function cycle_default_input_mode(next: boolean) {
     default_input_mode = (next ? next_mode : prev_mode)[default_input_mode];
+    show_current_input_mode();
 }
 
 export function set_input_mode(mode: InputMode | null) {
@@ -302,8 +322,13 @@ const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => void> 
     [InputMode.Color]: color_modify,
 } as const;
 
-export function apply_number(value: string) {
+export function apply_value(value: string) {
     const mode = get_input_mode();
+    const alphabet = get_input_alphabet();
+
+    if (mode === InputMode.Normal && !('1' <= value && value <= '9')) return;
+    if ((mode === InputMode.Color || !alphabet) && !('0' <= value && value <= '9')) return;
+
     const add = !is_common(value);
     selected.forEach(k => {
         const r = Math.floor(k / 100), c = k % 100;
@@ -311,7 +336,7 @@ export function apply_number(value: string) {
     });
 }
 
-export function clear_number() {
+export function clear_value() {
     const has_mode: Record<InputMode, boolean> = {
         [InputMode.Normal]: false,
         [InputMode.Center]: false,

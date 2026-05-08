@@ -199,4 +199,7 @@ init_cell_map(cell_map, right, bottom, solving_state);
 render_all(puzzle_data.rules);
 setup_listeners(solving_state, puzzle_data.rules);
 
+for (const button of document.querySelectorAll('button')) {
+    button.tabIndex = -1;
+}
 window.getSelection()?.selectAllChildren(document.body);

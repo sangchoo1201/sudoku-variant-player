@@ -1,10 +1,11 @@
 import type {Rule, SolvingState} from "./schema.ts";
 import {check_all} from "./rule.ts";
 import {
-    add_selection, apply_number, clear_number,
+    add_selection, apply_value, clear_value,
     get_input_alphabet, get_input_mode, get_last_cell,
-    InputMode, is_selected, remove_selection, reset_selection, selection_to_text,
-    set_input_alphabet, set_input_mode, set_last_cell, show_errors, cycle_default_input_mode
+    InputMode, type InputMode as InputModeType, is_selected, remove_selection, reset_selection, selection_to_text,
+    set_input_alphabet, set_input_mode, set_last_cell, show_errors, cycle_default_input_mode, show_current_input_mode,
+    set_default_input_mode
 } from "./cell.ts";
 
 const DragMode = {
@@ -22,16 +23,66 @@ const direction_map: Partial<Record<string, [number, number]>> = {
 } as const;
 
 let drag_mode: DragMode = DragMode.None;
+let active_pointer_id: number | null = null;
 const modifiers = {
     shift: false,
     control: false,
     alt: false,
 };
 
+function config_input_mode() {
+    set_input_mode(null);
+    if (modifiers.shift) set_input_mode(InputMode.Corner);
+    if (modifiers.control) set_input_mode(InputMode.Center);
+    if (modifiers.shift && modifiers.control) set_input_mode(InputMode.Color);
+    show_current_input_mode();
+}
+
 export function setup_listeners(
     solving_state: SolvingState, rules: Rule[]
 ) {
-    const grid = document.getElementById('main-grid')!;
+    for (const [input_mode, button_id] of [
+        [InputMode.Normal, 'button-normal'],
+        [InputMode.Corner, 'button-corner'],
+        [InputMode.Center, 'button-center'],
+        [InputMode.Color, 'button-color'],
+    ] as [InputModeType, string][]) {
+        const button = document.querySelector<HTMLButtonElement>(`#${button_id}`)!;
+        button.addEventListener('pointerdown', () => {
+            set_default_input_mode(input_mode);
+        });
+    }
+
+    for (let i = 0; i <= 9; i++) {
+        const button = document.querySelector<HTMLButtonElement>(`#button-${i}`)!;
+        button.addEventListener('pointerdown', () => {
+            apply_value(i.toString());
+            const [_, errors] = check_all(solving_state, rules);
+            show_errors(errors);
+        });
+    }
+
+    const button_delete = document.querySelector<HTMLButtonElement>('#button-delete')!;
+    button_delete.addEventListener('pointerdown', () => {
+        clear_value();
+        const [_, errors] = check_all(solving_state, rules);
+        show_errors(errors);
+    });
+
+    const button_load_file = document.querySelector<HTMLButtonElement>('#button-load-file')!;
+    const file_input = document.querySelector<HTMLInputElement>('#file-input')!;
+    button_load_file.addEventListener('click', () => {
+        file_input.click();
+    });
+
+    file_input.onchange = async () => {
+        const file = file_input.files?.[0];
+        if (!file) return;
+
+        const text = await file.text();
+        console.log(text);
+        location.href = `?code=${text}`;
+    };
 
     window.addEventListener('keydown', (e) => {
         if (e.repeat) return; // 꾹 누름 방지
@@ -42,14 +93,10 @@ export function setup_listeners(
         if (code === 'ControlLeft' || code === 'ControlRight' || code === 'MetaLeft' || code === 'MetaRight') modifiers.control = true;
         if (code === 'AltLeft' || code === 'AltRight') modifiers.alt = true;
 
-        set_input_mode(null);
-        if (modifiers.shift) set_input_mode(InputMode.Corner);
-        if (modifiers.control) set_input_mode(InputMode.Center);
-        if (modifiers.shift && modifiers.control) set_input_mode(InputMode.Color);
+        config_input_mode();
         set_input_alphabet(null)
         if (modifiers.alt) set_input_alphabet(true);
 
-        const input_mode = get_input_mode();
         const input_alphabet = get_input_alphabet();
         const last_cell = get_last_cell();
 
@@ -67,7 +114,11 @@ export function setup_listeners(
         }
 
         if (code === 'Space') {
+            e.preventDefault();
             cycle_default_input_mode(!modifiers.shift);
+        }
+        if (code === 'Tab') {
+            e.preventDefault();
         }
 
         // 방향키 이동
@@ -89,19 +140,18 @@ export function setup_listeners(
 
         // 숫자 입력
         for (const keyword of ['Digit', 'Numpad', 'Key']) {
-            if (keyword === 'Key' && (input_mode === InputMode.Normal || input_mode === InputMode.Color || !input_alphabet)) continue;
+            if (keyword === 'Key' && !input_alphabet) continue;
             if (code.startsWith(keyword)) {
                 e.preventDefault();
                 const key = code.slice(keyword.length);
                 if (keyword === 'Numpad' && !('0' <= key && key <= '9')) continue;
-                if (input_mode === InputMode.Normal && key === '0') continue;
-                apply_number(key);
+                apply_value(key);
             }
         }
 
         // 삭제
         if (code === 'Backspace' || code === 'Delete') {
-            clear_number();
+            clear_value();
         }
 
         const [_, errors] = check_all(solving_state, rules);
@@ -114,6 +164,7 @@ export function setup_listeners(
             if (code === 'ShiftLeft' || code === 'ShiftRight') modifiers.shift = false;
             if (code === 'ControlLeft' || code === 'ControlRight' || code === 'MetaLeft' || code === 'MetaRight') modifiers.control = false;
             if (code === 'AltLeft' || code === 'AltRight') modifiers.alt = false;
+            config_input_mode();
         }, 30);
     });
 
@@ -130,7 +181,15 @@ export function setup_listeners(
         e.clipboardData?.setData("text/plain", text);
     });
 
-    window.addEventListener('mousedown', (e) => {
+    window.addEventListener('pointerdown', (e) => {
+        if ((e.target as HTMLElement).closest('#button-load-file')) return;
+
+        if (active_pointer_id !== null) return;
+        active_pointer_id = e.pointerId;
+
+        const controls = (e.target as HTMLElement).closest('#controls');
+        if (controls) return;
+
         const target = (e.target as HTMLElement).closest('.cell') as HTMLDivElement;
         if (!target) {
             reset_selection();
@@ -153,7 +212,7 @@ export function setup_listeners(
         add_selection([r, c]);
     });
 
-    grid.addEventListener('dblclick', (e) => {
+    window.addEventListener('dblclick', (e) => {
         const target = (e.target as HTMLElement).closest('.cell') as HTMLDivElement;
         if (!target) return;
 
@@ -176,7 +235,8 @@ export function setup_listeners(
         set_last_cell([r, c]);
     });
 
-    window.addEventListener('mousemove', (e) => {
+    window.addEventListener('pointermove', (e) => {
+        if (e.pointerId !== active_pointer_id) return;
         if (drag_mode === DragMode.None) return;
 
         const target = document.elementFromPoint(e.clientX, e.clientY)
@@ -194,7 +254,13 @@ export function setup_listeners(
         }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('pointerup', () => {
+        active_pointer_id = null;
+        drag_mode = DragMode.None;
+    });
+
+    window.addEventListener('pointercancel', () => {
+        active_pointer_id = null;
         drag_mode = DragMode.None;
     });
 }

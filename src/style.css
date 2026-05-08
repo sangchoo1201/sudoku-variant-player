@@ -6,6 +6,7 @@ html, body, #app {
 #app {
     display: flex;
     overflow: hidden;
+    touch-action: none;
 }
 
 @media (orientation: portrait) {
@@ -206,7 +207,6 @@ html, body, #app {
 #controls {
     align-self: center;
     display: flex;
-    gap: 1cqw;
     container-type: size;
 }
 
@@ -222,7 +222,7 @@ html, body, #app {
     }
 }
 
-.digit-pad {
+#digit-pad {
     aspect-ratio: 1 / 1;
     display: grid;
     grid-template-rows: repeat(4, 1fr);
@@ -245,7 +245,15 @@ button {
     touch-action: manipulation;
 }
 
-.digit-pad > button {
+button:focus {
+    outline: none;
+}
+
+button.selected-mode {
+    box-shadow: inset 0 0 0 10px rgba(100, 150, 255, 0.4);
+}
+
+#digit-pad > button {
     width: 80%;
     height: 80%;
 }
@@ -254,11 +262,19 @@ button {
     button {
         font-size: 5cqh;
     }
+
+    button.button-digit {
+        font-size: 10cqh;
+    }
 }
 
 @media (orientation: landscape) {
     button {
         font-size: 4cqw;
+    }
+
+    button.button-digit {
+        font-size: 8cqw;
     }
 }
 
