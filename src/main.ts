@@ -1,6 +1,7 @@
 import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
 import {render_all} from "./render.ts";
-import {setup_selection} from "./input.ts";
+import {setup_listeners} from "./input.ts";
+import {init_cell_map} from "./cell.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
@@ -123,6 +124,14 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
             normal.classList.add('normal');
             cell.appendChild(normal);
 
+            const value = puzzle_data.board[r][c];
+            if (value === 0) {
+                normal.textContent = '';
+            } else {
+                normal.textContent = value.toString();
+                cell.classList.add('fixed');
+            }
+
             const corner = document.createElement('div');
             corner.classList.add('corner');
             cell.appendChild(corner);
@@ -148,14 +157,6 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
 
             cell.dataset.row = r.toString();
             cell.dataset.col = c.toString();
-
-            const value = puzzle_data.board[r][c];
-            if (value === 0) {
-                normal.textContent = '';
-            } else {
-                normal.textContent = value.toString();
-                cell.classList.add('fixed');
-            }
 
             cell_map[r][c] = {
                 cell: cell,
@@ -194,11 +195,8 @@ const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
 const [cell_map, right, bottom] = setup_grid(puzzle_data);
+init_cell_map(cell_map, right, bottom, solving_state);
 render_all(puzzle_data.rules);
-setup_selection(cell_map, right, bottom, solving_state, puzzle_data.rules);
+setup_listeners(solving_state, puzzle_data.rules);
 
 window.getSelection()?.selectAllChildren(document.body);
-
-if (import.meta.env.DEV) {
-    (globalThis as any).main = { solving_state }
-}
