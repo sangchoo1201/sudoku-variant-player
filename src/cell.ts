@@ -7,7 +7,7 @@ export const InputMode = {
     Center: "center",
     Color: "color",
 } as const;
-type InputMode = typeof InputMode[keyof typeof InputMode];
+export type InputMode = typeof InputMode[keyof typeof InputMode];
 
 const next_mode: Record<InputMode, InputMode> = {
     [InputMode.Normal]: InputMode.Corner,
@@ -167,6 +167,13 @@ export function get_input_alphabet(): boolean {
 
 export function is_selected(pos: Position): boolean {
     return selected.has(encode(pos));
+}
+
+export function get_single_selection_or_null(): Position | null {
+    if (selected.size !== 1) return null;
+    const [k] = selected.values();
+    const r = Math.floor(k / 100), c = k % 100;
+    return [r, c];
 }
 
 export function get_last_cell(): HTMLDivElement | null {

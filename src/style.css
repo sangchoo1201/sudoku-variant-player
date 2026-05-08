@@ -161,7 +161,7 @@ html, body, #app {
     font-size: 6cqw;
     font-weight: bold;
     color: rgb(29, 106, 229);
-    transform: translateY(-5%);
+    transform: translateY(-2%);
 }
 
 .corner {
@@ -279,10 +279,24 @@ button.selected-mode {
     }
 }
 
-button.wide {
-    aspect-ratio: 2 / 1;
-    grid-column: 2 span;
-    width: 90%
+#empty-space {
+    flex: 0.6;
+}
+
+#utility-pad {
+    display: flex;
+}
+
+@media (orientation: portrait) {
+    #utility-pad {
+        flex-direction: column;
+    }
+}
+
+@media (orientation: landscape) {
+    #utility-pad {
+        flex-direction: row;
+    }
 }
 
 /* TEST */

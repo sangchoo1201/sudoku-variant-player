@@ -1,11 +1,12 @@
 import type {Rule, SolvingState} from "./schema.ts";
 import {check_all} from "./rule.ts";
 import {
-    add_selection, apply_value, clear_value,
-    get_input_alphabet, get_input_mode, get_last_cell,
-    InputMode, type InputMode as InputModeType, is_selected, remove_selection, reset_selection, selection_to_text,
-    set_input_alphabet, set_input_mode, set_last_cell, show_errors, cycle_default_input_mode, show_current_input_mode,
-    set_default_input_mode
+    add_selection, apply_value, clear_value, cycle_default_input_mode,
+    get_input_alphabet, get_last_cell, get_single_selection_or_null,
+    InputMode, type InputMode as InputModeType, is_selected,
+    remove_selection, reset_selection, selection_to_text,
+    set_input_alphabet, set_input_mode, set_last_cell, show_errors, set_default_input_mode,
+    show_current_input_mode,
 } from "./cell.ts";
 
 const DragMode = {
@@ -201,15 +202,21 @@ export function setup_listeners(
         const multi_select = e.ctrlKey || e.metaKey || e.shiftKey;
 
         drag_mode = DragMode.Add;
-        if (multi_select && is_selected([r, c])) {
-            remove_selection([r, c]);
-            drag_mode = DragMode.Remove;
+        if (multi_select) {
+            if (is_selected([r, c])) {
+                remove_selection([r, c]);
+                drag_mode = DragMode.Remove;
+            } else {
+                add_selection([r, c]);
+            }
             return;
         }
-        if (!multi_select) {
-            reset_selection();
+
+        const [sr, sc] = get_single_selection_or_null() ?? [-1, -1];
+        reset_selection();
+        if (!(r === sr && c === sc)) {
+            add_selection([r, c]);
         }
-        add_selection([r, c]);
     });
 
     window.addEventListener('dblclick', (e) => {
