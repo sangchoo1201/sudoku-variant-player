@@ -81,9 +81,16 @@ export function setup_listeners(
         if (!file) return;
 
         const text = await file.text();
-        console.log(text);
         location.href = `?code=${text}`;
     };
+
+    const button_load_text = document.querySelector<HTMLButtonElement>('#button-load-text')!;
+    button_load_text.addEventListener('click', () => {
+        const text = prompt("Enter base64 code");
+        if (!text) return;
+
+        location.href = `?code=${text}`;
+    });
 
     window.addEventListener('keydown', (e) => {
         if (e.repeat) return; // 꾹 누름 방지
@@ -183,8 +190,6 @@ export function setup_listeners(
     });
 
     window.addEventListener('pointerdown', (e) => {
-        if ((e.target as HTMLElement).closest('#button-load-file')) return;
-
         if (active_pointer_id !== null) return;
         active_pointer_id = e.pointerId;
 
