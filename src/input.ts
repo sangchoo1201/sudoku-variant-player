@@ -94,7 +94,7 @@ export function setup_listeners(
 
     const button_export = document.querySelector<HTMLButtonElement>('#button-export')!;
     button_export.addEventListener('click', async () => {
-        const text = selection_to_text();
+        const text = selection_to_text(true);
         await navigator.clipboard.writeText(text);
         alert("Board data copied!");
     });
