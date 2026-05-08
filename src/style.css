@@ -8,6 +8,18 @@ html, body, #app {
     overflow: hidden;
 }
 
+@media (orientation: portrait) {
+    #app {
+        flex-direction: column;
+    }
+}
+
+@media (orientation: landscape) {
+    #app {
+        flex-direction: row;
+    }
+}
+
 #board {
     position: relative;
     align-self: center;
@@ -193,18 +205,67 @@ html, body, #app {
 
 #controls {
     align-self: center;
+    display: flex;
+    gap: 1cqw;
+    container-type: size;
 }
 
 @media (orientation: portrait) {
-    #app {
-        flex-direction: column;
+    #controls {
+        flex-direction: row;
     }
 }
 
 @media (orientation: landscape) {
-    #app {
-        flex-direction: row;
+    #controls {
+        flex-direction: column-reverse;
     }
+}
+
+.digit-pad {
+    aspect-ratio: 1 / 1;
+    display: grid;
+    grid-template-rows: repeat(4, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    place-items: center;
+    align-items: center;
+    justify-content: center;
+}
+
+button {
+    aspect-ratio: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.digit-pad > button {
+    width: 80%;
+    height: 80%;
+}
+
+@media (orientation: portrait) {
+    button {
+        font-size: 5cqh;
+    }
+}
+
+@media (orientation: landscape) {
+    button {
+        font-size: 4cqw;
+    }
+}
+
+button.wide {
+    aspect-ratio: 2 / 1;
+    grid-column: 2 span;
+    width: 90%
 }
 
 /* TEST */
