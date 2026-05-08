@@ -406,13 +406,13 @@ export function show_errors(errors: Partial<Record<RuleID, Position[]>>) {
     }
 }
 
-export function selection_to_text(): string {
+export function selection_to_text(select_all: boolean = false): string {
     let texts: string[][] = [];
     let mn_row = 8, mx_row = 0, mn_col = 8, mx_col = 0;
     for (let r = 0; r < 9; r++) {
         texts.push([]);
         for (let c = 0; c < 9; c++) {
-            if (!selected.has(encode([r, c]))) {
+            if (!(selected.has(encode([r, c])) || select_all)) {
                 texts[r].push(" ");
                 continue;
             }

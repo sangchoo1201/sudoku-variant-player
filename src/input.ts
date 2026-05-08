@@ -92,6 +92,13 @@ export function setup_listeners(
         location.href = `?code=${text}`;
     });
 
+    const button_export = document.querySelector<HTMLButtonElement>('#button-export')!;
+    button_export.addEventListener('click', async () => {
+        const text = selection_to_text();
+        await navigator.clipboard.writeText(text);
+        alert("Board data copied!");
+    });
+
     window.addEventListener('keydown', (e) => {
         if (e.repeat) return; // 꾹 누름 방지
 
