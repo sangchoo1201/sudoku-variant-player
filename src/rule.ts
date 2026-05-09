@@ -12,16 +12,13 @@ import type {
     ReferenceRule,
     PrismRule,
     TemperatureRule,
-    RootRule, PointRule, StencilRule, RuleID,
+    RootRule, PointRule, StencilRule, RuleID, VectorRule,
 } from "./schema.ts";
 
 type RuleCheckingResult = [true, []] | [false, Position[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
-
-const square_numbers = new Set([16, 25, 36, 49, 64, 81]);
-const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
 
 function create_error_collector() {
     const errors: Position[] = [];
@@ -342,6 +339,9 @@ const reference_check: RuleCheckingFunction<ReferenceRule> = function (
     return errors.result();
 }
 
+const square_numbers = new Set([16, 25, 36, 49, 64, 81]);
+const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
+
 const prism_check: RuleCheckingFunction<PrismRule> = function (
     solving_state: SolvingState, rule: PrismRule
 ): RuleCheckingResult {
@@ -484,6 +484,37 @@ const stencil_check: RuleCheckingFunction<StencilRule> = function (
     return errors.result();
 }
 
+const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
+    "L": [0, -1],
+    "R": [0, 1],
+    "U": [-1, 0],
+    "D": [1, 0],
+};
+
+const vector_check: RuleCheckingFunction<VectorRule> = function (
+    solving_state: SolvingState, rule: VectorRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [r, c, direction] of rule.render_state.arrows) {
+        const v = solving_state.board[r][c].number;
+        if (v === null) continue;
+        const [dr, dc] = direction_map[direction];
+        const nr = r + dr * v, nc = c + dc * v;
+        if (!(0 <= nr && nr < 9 && 0 <= nc && nc < 9)) {
+            errors.add([r, c]);
+            continue;
+        }
+        const other_v = solving_state.board[nr][nc].number;
+        if (other_v !== null && other_v !== 9) {
+            errors.add([r, c]);
+            errors.add([nr, nc]);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -504,6 +535,7 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[RT]": (s: SolvingState, r: Rule) => root_check(s, r as RootRule),
     "[PT]": (s: SolvingState, r: Rule) => point_check(s, r as PointRule),
     "[ST]": (s: SolvingState, r: Rule) => stencil_check(s, r as StencilRule),
+    "[VT]": (s: SolvingState, r: Rule) => vector_check(s, r as VectorRule),
 } as const;
 
 export function check_all(

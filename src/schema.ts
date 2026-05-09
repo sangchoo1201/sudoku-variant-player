@@ -189,7 +189,7 @@ const TemperatureRuleSchema = z.object({
         regions: z.array(
             z.object({
                 cells: z.tuple([PositionSchema, PositionSchema, PositionSchema]),
-                color: z.union([z.literal("red"), z.literal("green"), z.literal("blue")])
+                color: z.enum(["red", "green", "blue"]),
             })
         ),
     }),
@@ -233,6 +233,17 @@ const StencilRuleSchema = z.object({
 
 export type StencilRule = z.infer<typeof StencilRuleSchema>;
 
+const VectorRuleSchema = z.object({
+    id: z.literal("[VT]"),
+    render_state: z.object({
+        arrows: z.array(
+            z.tuple([z.number(), z.number(), z.enum(["L", "R", "U", "D"])])
+        ),
+    }),
+});
+
+export type VectorRule = z.infer<typeof VectorRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -253,6 +264,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     RootRuleSchema,
     PointRuleSchema,
     StencilRuleSchema,
+    VectorRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
@@ -262,7 +274,8 @@ export type SideRule = SequenceRule | QuantumRule | RangeRule;
 export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" |
     "[DT]" | "[QD]" | "[SG]" | "[LK]" | "[LO]" |
     "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" |
-    "[SQ]" | "[TM]" | "[RT]" | "[PT]" | "[ST]";
+    "[SQ]" | "[TM]" | "[RT]" | "[PT]" | "[ST]" |
+    "[VT]";
 
 export const PuzzleDataSchema = z.object({
     id: z.string(),

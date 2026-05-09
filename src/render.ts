@@ -13,7 +13,7 @@ import type {
     Rule,
     RuleID,
     SideRule,
-    Position, PointRule,
+    Position, PointRule, VectorRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -234,16 +234,18 @@ const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: Pr
     }
 }
 
+const triangle_rotation = (x: number, y: number, r3: number = 3 ** 0.5): [number, number][] => [
+    [x, y],
+    [-x / 2 - y * r3 / 2, x * r3 / 2 - y / 2],
+    [-x / 2 + y * r3 / 2, -x * r3 / 2 - y / 2],
+]
+
 const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: PointRule) {
     for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
-        const d = 0.11, r3 = 3 ** 0.5;
-        const rotation = (x: number , y: number): [number, number][] => [
-            [x, y],
-            [-x / 2 - y * r3 / 2, x * r3 / 2 - y / 2],
-            [-x / 2 + y * r3 / 2, -x * r3 / 2 - y / 2],
-        ]
-        const points = rotation((c2 - c1) * d, (r2 - r1) * d)
+        const d = 0.11;
+
+        const points = triangle_rotation((c2 - c1) * d, (r2 - r1) * d)
             .map(([x, y]) => `${x + cx},${y + cy}`);
 
         const poly = document.createElementNS(
@@ -345,6 +347,31 @@ const temperature_render: Renderer<TemperatureRule> = function (ctx: RenderConte
     }
 }
 
+const vector_render: Renderer<VectorRule> = function (ctx: RenderContext, rule: VectorRule) {
+    const d = 0.25;
+    const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
+        "L": [-d, 0],
+        "R": [d, 0],
+        "U": [0, -d],
+        "D": [0, d],
+    };
+
+    for (const [r, c, direction] of rule.render_state.arrows) {
+        const [x, y] = direction_map[direction];
+        const points = triangle_rotation(x, y)
+            .map(([nx, ny]) => `${nx + c + 0.5 - 0.2 * x},${ny + r + 0.5 - 0.2 * y}`);
+
+        const poly = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "polygon"
+        );
+
+        poly.setAttribute("points", points.join(' '));
+        poly.setAttribute("fill", "rgba(255, 0, 106, 0.5)");
+        ctx.layer_bottom.appendChild(poly);
+    }
+}
+
 function generate_get_pos(direction: "ROW" | "COL", index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW":
@@ -429,6 +456,7 @@ const renderers: Partial<Record<RuleID, (ctx: RenderContext, r: Rule) => void>> 
     "[SQ]": (ctx, r) => sequence_render(ctx, r as SequenceRule),
     "[QT]": (ctx, r) => quantum_render(ctx, r as QuantumRule),
     "[RG]": (ctx, r) => range_render(ctx, r as RangeRule),
+    "[VT]": (ctx, r) => vector_render(ctx, r as VectorRule),
 };
 
 export function render_all(rules: Rule[]) {
