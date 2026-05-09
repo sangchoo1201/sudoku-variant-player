@@ -244,39 +244,69 @@ const VectorRuleSchema = z.object({
 
 export type VectorRule = z.infer<typeof VectorRuleSchema>;
 
+const StreamRuleSchema = z.object({
+    id: z.literal("[SR]"),
+    render_state: z.object({
+        streams: z.array(z.array(PositionSchema)),
+    }),
+});
+
+export type StreamRule = z.infer<typeof StreamRuleSchema>;
+
+const PairRuleSchema = z.object({
+    id: z.literal("[PA]"),
+    render_state: z.object({
+        dominoes: z.array(
+            z.tuple([PositionSchema, PositionSchema])
+        ),
+    }),
+});
+
+export type PairRule = z.infer<typeof PairRuleSchema>;
+
+const InversionRuleSchema = z.object({
+    id: z.literal("[IV]"),
+    render_state: z.object({
+        lines: z.array(z.array(PositionSchema)),
+    }),
+});
+
+export type InversionRule = z.infer<typeof InversionRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
     ColumnRuleSchema,
     BoxRuleSchema,
+
     DistantRuleSchema,
     SegmentRuleSchema,
     LinkRuleSchema,
     LotusRuleSchema,
     MetroRuleSchema,
+
     SequenceRuleSchema,
     QuantumRuleSchema,
     RangeRuleSchema,
     QuadRuleSchema,
     ReferenceRuleSchema,
+
     PrismRuleSchema,
     TemperatureRuleSchema,
     RootRuleSchema,
     PointRuleSchema,
     StencilRuleSchema,
+
     VectorRuleSchema,
+    StreamRuleSchema,
+    PairRuleSchema,
+    InversionRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
 export type RuleID = z.infer<typeof RuleSchema>['id'];
 
 export type SideRule = SequenceRule | QuantumRule | RangeRule;
-
-export type RuleID = "[Sudoku]" | "[R]" | "[C]" | "[B]" |
-    "[DT]" | "[QD]" | "[SG]" | "[LK]" | "[LO]" |
-    "[MR]" | "[RF]" | "[PR]" | "[QT]" | "[RG]" |
-    "[SQ]" | "[TM]" | "[RT]" | "[PT]" | "[ST]" |
-    "[VT]";
 
 export const PuzzleDataSchema = z.object({
     id: z.string(),

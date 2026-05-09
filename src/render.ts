@@ -13,7 +13,7 @@ import type {
     Rule,
     RuleID,
     SideRule,
-    Position, PointRule, VectorRule,
+    Position, PointRule, VectorRule, StreamRule, PairRule, InversionRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -29,6 +29,8 @@ type RenderContext = {
 
 type PureRenderer = (ctx: RenderContext) => void;
 type Renderer<T> = (ctx: RenderContext, rule: T) => void;
+
+const nothing_render = () => {};
 
 const sudoku_render: PureRenderer = function (ctx: RenderContext) {
     for (let i = 0; i < 20; i++) {
@@ -183,15 +185,29 @@ const lotus_render: Renderer<LotusRule> = function (ctx: RenderContext, rule: Lo
     }
 }
 
+function generate_polyline(line: Position[]): SVGPolylineElement {
+    const points: string[] = [];
+    for (const [r, c] of line) {
+        points.push(`${c + 0.5},${r + 0.5}`);
+    }
+
+    const poly = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "polyline"
+    );
+    poly.setAttribute("points", points.join(' '));
+    poly.setAttribute("fill", "none");
+
+    return poly;
+}
+
 const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: MetroRule) {
     const length = rule.render_state.metros.length;
     for (const [i, metro] of rule.render_state.metros.entries()) {
         let h = 300 / length * i;
         if (h >= 150) h += 60;
         const color = `hsla(${h}, 80%, 40%, 0.4)`;
-        const points: string[] = [];
         for (const [r, c] of metro) {
-            points.push(`${c + 0.5},${r + 0.5}`);
             const circle = document.createElementNS(
                 "http://www.w3.org/2000/svg",
                 "circle"
@@ -203,19 +219,53 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
             ctx.layer_bottom.appendChild(circle);
         }
 
-        const poly = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "polyline"
-        );
-
-        poly.setAttribute("points", points.join(' '));
-        poly.setAttribute("fill", "none");
+        const poly = generate_polyline(metro);
         poly.setAttribute("stroke", color);
         poly.setAttribute("stroke-width", "0.12");
         poly.setAttribute("stroke-linejoin", "round");
         poly.setAttribute("stroke-linecap", "round");
 
         ctx.layer_bottom.appendChild(poly);
+    }
+}
+
+const stream_render: Renderer<StreamRule> = function (ctx: RenderContext, rule: StreamRule) {
+    for (const stream of rule.render_state.streams) {
+        const poly = generate_polyline(stream);
+        poly.setAttribute("stroke", `rgba(94, 234, 234, 0.5)`);
+        poly.setAttribute("stroke-width", "0.1");
+
+        ctx.layer_bottom.appendChild(poly);
+    }
+}
+
+const inversion_render: Renderer<InversionRule> = function (ctx: RenderContext, rule: InversionRule) {
+    for (const line of rule.render_state.lines) {
+        const g = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "g"
+        );
+        g.setAttribute("opacity", "0.5");
+
+        const [r1, c1] = line[0];
+        const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle"
+        );
+        circle.setAttribute("cx", (c1 + 0.5).toString());
+        circle.setAttribute("cy", (r1 + 0.5).toString());
+        circle.setAttribute("r", "0.2");
+        circle.setAttribute("fill", "rgb(30, 194, 112)");
+        g.appendChild(circle);
+
+        const poly = generate_polyline(line);
+        poly.setAttribute("stroke", "rgb(30, 194, 112)");
+        poly.setAttribute("stroke-width", "0.15");
+        poly.setAttribute("stroke-linejoin", "round");
+        poly.setAttribute("stroke-linecap", "round");
+        g.appendChild(poly);
+
+        ctx.layer_bottom.appendChild(g);
     }
 }
 
@@ -384,6 +434,29 @@ const vector_render: Renderer<VectorRule> = function (ctx: RenderContext, rule: 
     }
 }
 
+const pair_render: Renderer<PairRule> = function (ctx: RenderContext, rule: PairRule) {
+    const d = 0.1;
+    for (const [[r1, c1], [r2, c2]] of rule.render_state.dominoes) {
+        const x1 = Math.min(c1, c2) + d;
+        const x2 = Math.max(c1, c2) + 1 - d;
+        const y1 = Math.min(r1, r2) + d;
+        const y2 = Math.max(r1, r2) + 1 - d;
+
+        const poly = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "polygon"
+        );
+        poly.setAttribute("points", `${x1},${y1} ${x2},${y1} ${x2},${y2} ${x1},${y2}`);
+        poly.setAttribute("fill", "rgba(151, 104, 255, 0.25)");
+        poly.setAttribute("stroke", "rgba(151, 104, 255, 0.8)");
+        poly.setAttribute("stroke-width", "0.02");
+        poly.setAttribute("stroke-dasharray", "0.12 0.08");
+        poly.setAttribute("stroke-dashoffset", "0.06");
+
+        ctx.layer_bottom.appendChild(poly);
+    }
+}
+
 function generate_get_pos(direction: "ROW" | "COL", index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW":
@@ -471,6 +544,9 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[QT]": (ctx, r) => quantum_render(ctx, r as QuantumRule),
     "[RG]": (ctx, r) => range_render(ctx, r as RangeRule),
     "[VT]": (ctx, r) => vector_render(ctx, r as VectorRule),
+    "[SR]": (ctx, r) => stream_render(ctx, r as StreamRule),
+    "[PA]": (ctx, r) => pair_render(ctx, r as PairRule),
+    "[IV]": (ctx, r) => inversion_render(ctx, r as InversionRule),
     "[ST]": nothing_render,  // TODO
 };
 

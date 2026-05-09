@@ -12,7 +12,7 @@ import type {
     ReferenceRule,
     PrismRule,
     TemperatureRule,
-    RootRule, PointRule, StencilRule, RuleID, VectorRule,
+    RootRule, PointRule, StencilRule, RuleID, VectorRule, StreamRule, PairRule, InversionRule,
 } from "./schema.ts";
 
 type RuleCheckingResult = [true, []] | [false, Position[]];
@@ -515,6 +515,82 @@ const vector_check: RuleCheckingFunction<VectorRule> = function (
     return errors.result();
 }
 
+const stream_check: RuleCheckingFunction<StreamRule> = function (
+    solving_state: SolvingState, rule: StreamRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const stream of rule.render_state.streams) {
+        let remainder: number | null = null;
+        for (const [r, c] of stream) {
+            if (remainder !== null) remainder ^= 1;
+            const v = solving_state.board[r][c].number;
+            if (v === null) continue;
+            if (remainder === null) {
+                remainder = v % 2;
+            } else if (v % 2 !== remainder) {
+                errors.add_all(stream);
+                break;
+            }
+        }
+    }
+
+    return errors.result();
+}
+
+const pair_check: RuleCheckingFunction<PairRule> = function (
+    solving_state: SolvingState, rule: PairRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const pairs: Record<number, [Position, Position]> = {};
+    for (const [[r1, c1], [r2, c2]] of rule.render_state.dominoes) {
+        const v1 = solving_state.board[r1][c1].number;
+        const v2 = solving_state.board[r2][c2].number;
+        if (v1 === null || v2 === null) continue;
+        const n = Math.min(v1, v2) * 10 + Math.max(v1, v2);
+        if (n in pairs) {
+            errors.add_all(pairs[n]);
+            errors.add([r1, c1]);
+            errors.add([r2, c2]);
+        } else {
+            pairs[n] = [[r1, c1], [r2, c2]];
+        }
+    }
+
+    return errors.result();
+}
+
+const inversion_check: RuleCheckingFunction<InversionRule> = function (
+    solving_state: SolvingState, rule: InversionRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const line of rule.render_state.lines) {
+        let min_num = 0;
+        let inversion_count = 0;
+        let can_invert = false;
+
+        const nums = line.map(([r, c]) => solving_state.board[r][c].number);
+        const len = nums.length;
+        for (let i = 0; i < nums.length; i++) {
+            const v = nums[i];
+            if (v === null) {
+                if (!((i === len - 1 || nums[i + 1] === 9) && (i === 0 || nums[i - 1] === 1))) can_invert = true;
+                continue;
+            }
+            if (v < min_num) inversion_count++;
+            min_num = v;
+        }
+
+        if (inversion_count >= 2 || inversion_count === 0 && !can_invert) {
+            errors.add_all(line);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -536,6 +612,9 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[PT]": (s: SolvingState, r: Rule) => point_check(s, r as PointRule),
     "[ST]": (s: SolvingState, r: Rule) => stencil_check(s, r as StencilRule),
     "[VT]": (s: SolvingState, r: Rule) => vector_check(s, r as VectorRule),
+    "[SR]": (s: SolvingState, r: Rule) => stream_check(s, r as StreamRule),
+    "[PA]": (s: SolvingState, r: Rule) => pair_check(s, r as PairRule),
+    "[IV]": (s: SolvingState, r: Rule) => inversion_check(s, r as InversionRule),
 } as const;
 
 export function check_all(
