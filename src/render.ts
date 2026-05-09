@@ -186,9 +186,21 @@ const lotus_render: Renderer<LotusRule> = function (ctx: RenderContext, rule: Lo
 const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: MetroRule) {
     const length = rule.render_state.metros.length;
     for (const [i, metro] of rule.render_state.metros.entries()) {
+        let h = 300 / length * i;
+        if (h >= 210) h += 60;
+        const color = `hsla(${h}, 80%, 40%, 0.4)`;
         const points: string[] = [];
         for (const [r, c] of metro) {
             points.push(`${c + 0.5},${r + 0.5}`);
+            const circle = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "circle"
+            );
+            circle.setAttribute('cx', (c + 0.5).toString());
+            circle.setAttribute("cy", (r + 0.5).toString());
+            circle.setAttribute("r", "0.05");
+            circle.setAttribute("fill", color);
+            ctx.layer_bottom.appendChild(circle);
         }
 
         const poly = document.createElementNS(
@@ -198,7 +210,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
 
         poly.setAttribute("points", points.join(' '));
         poly.setAttribute("fill", "none");
-        poly.setAttribute("stroke", `hsla(${360 / length * i}, 80%, 50%, 0.4)`);
+        poly.setAttribute("stroke", color);
         poly.setAttribute("stroke-width", "0.1");
         poly.setAttribute("stroke-linejoin", "round");
         poly.setAttribute("stroke-linecap", "round");
@@ -439,11 +451,13 @@ const quantum_render: Renderer<QuantumRule> = (ctx: RenderContext, rule: Quantum
 const range_render: Renderer<RangeRule> = (ctx: RenderContext, rule: RangeRule) =>
     side_render(ctx, rule, "blue");
 
-const renderers: Partial<Record<RuleID, (ctx: RenderContext, r: Rule) => void>> = {
+const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[Sudoku]": sudoku_render,
     "[R]": row_render,
     "[C]": column_render,
     "[B]": box_render,
+    "[DT]": nothing_render,
+    "[QD]": nothing_render,
     "[SG]": (ctx, r) => segment_render(ctx, r as SegmentRule),
     "[LK]": (ctx, r) => link_render(ctx, r as LinkRule),
     "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
@@ -457,6 +471,7 @@ const renderers: Partial<Record<RuleID, (ctx: RenderContext, r: Rule) => void>> 
     "[QT]": (ctx, r) => quantum_render(ctx, r as QuantumRule),
     "[RG]": (ctx, r) => range_render(ctx, r as RangeRule),
     "[VT]": (ctx, r) => vector_render(ctx, r as VectorRule),
+    "[ST]": nothing_render,  // TODO
 };
 
 export function render_all(rules: Rule[]) {
