@@ -268,6 +268,7 @@ const RuleSchema = z.discriminatedUnion("id", [
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
+export type RuleID = z.infer<typeof RuleSchema>['id'];
 
 export type SideRule = SequenceRule | QuantumRule | RangeRule;
 
