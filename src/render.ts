@@ -187,7 +187,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
     const length = rule.render_state.metros.length;
     for (const [i, metro] of rule.render_state.metros.entries()) {
         let h = 300 / length * i;
-        if (h >= 210) h += 60;
+        if (h >= 150) h += 60;
         const color = `hsla(${h}, 80%, 40%, 0.4)`;
         const points: string[] = [];
         for (const [r, c] of metro) {
@@ -198,7 +198,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
             );
             circle.setAttribute('cx', (c + 0.5).toString());
             circle.setAttribute("cy", (r + 0.5).toString());
-            circle.setAttribute("r", "0.05");
+            circle.setAttribute("r", "0.06");
             circle.setAttribute("fill", color);
             ctx.layer_bottom.appendChild(circle);
         }
@@ -211,7 +211,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
         poly.setAttribute("points", points.join(' '));
         poly.setAttribute("fill", "none");
         poly.setAttribute("stroke", color);
-        poly.setAttribute("stroke-width", "0.1");
+        poly.setAttribute("stroke-width", "0.12");
         poly.setAttribute("stroke-linejoin", "round");
         poly.setAttribute("stroke-linecap", "round");
 
