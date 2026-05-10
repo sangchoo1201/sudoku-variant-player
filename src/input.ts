@@ -92,9 +92,13 @@ export function setup_listeners(
         location.href = `?code=${text}`;
     });
 
-    const button_export = document.querySelector<HTMLButtonElement>('#button-export')!;
-    button_export.addEventListener('click', async () => {
+    const button_copy_board = document.querySelector<HTMLButtonElement>('#button-copy-board')!;
+    button_copy_board.addEventListener('click', async () => {
         const text = selection_to_text(true);
+        if (text.includes("0")) {
+            const proceed = confirm("Empty cell detected. Do you want to copy anyway?");
+            if (!proceed) return;
+        }
         await navigator.clipboard.writeText(text);
         alert("Board data copied!");
     });
@@ -109,7 +113,7 @@ export function setup_listeners(
         if (code === 'AltLeft' || code === 'AltRight') modifiers.alt = true;
 
         config_input_mode();
-        set_input_alphabet(null)
+        set_input_alphabet(null);
         if (modifiers.alt) set_input_alphabet(true);
 
         const input_alphabet = get_input_alphabet();
