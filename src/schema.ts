@@ -255,7 +255,7 @@ const RootRuleSchema = z.object({
 export type RootRule = z.infer<typeof RootRuleSchema>;
 
 const PointRuleSchema = z.object({
-    id: z.literal("[PT]"),
+    id: z.literal("[PO]"),
     render_state: z.object({
         edges: z.array(
             z.tuple([PositionSchema, PositionSchema])
