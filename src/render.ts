@@ -479,7 +479,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
     "[MR]": (ctx, r) => metro_render(ctx, r as MetroRule),
     "[PR]": (ctx, r) => prism_render(ctx, r as PrismRule),
-    "[PT]": (ctx, r) => point_render(ctx, r as PointRule),
+    "[PO]": (ctx, r) => point_render(ctx, r as PointRule),
     "[RF]": (ctx, r) => reference_render(ctx, r as ReferenceRule),
     "[RT]": (ctx, r) => root_render(ctx, r as RootRule),
     "[TM]": (ctx, r) => temperature_render(ctx, r as TemperatureRule),
