@@ -436,7 +436,7 @@ const temperature_check: RuleCheckingFunction<TemperatureRule> = function (
             remaining--;
         }
         if ((sum + remaining) <= 10 && color == 'blue') continue;
-        if (Math.abs(15 - sum) <= remaining * 9 && color == 'green') continue;
+        if (remaining <= Math.abs(15 - sum) && Math.abs(15 - sum) <= remaining * 9 && color == 'green') continue;
         if ((sum + remaining * 9) >= 20 && color == 'red') continue;
         errors.add_all(cells);
     }
