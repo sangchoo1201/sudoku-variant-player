@@ -13,7 +13,7 @@ import type {
     Rule,
     RuleID,
     SideRule,
-    Position, PointRule, VectorRule, StreamRule, PairRule, InversionRule,
+    PointRule, VectorRule, StreamRule, PairRule, InversionRule, Position, Direction,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -30,22 +30,70 @@ type RenderContext = {
 type PureRenderer = (ctx: RenderContext) => void;
 type Renderer<T> = (ctx: RenderContext, rule: T) => void;
 
+type Coordinate = [number, number];
+
+function pos_to_coord([r, c]: Position): Coordinate {
+    return [c + 0.5, r + 0.5];
+}
+
+function generate_circle([r, c]: Position): SVGCircleElement {
+    const circle = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle"
+    );
+    circle.setAttribute("cx", (c + 0.5).toString());
+    circle.setAttribute("cy", (r + 0.5).toString());
+    return circle;
+}
+
+function generate_line([x1, y1]: Coordinate, [x2, y2]: Coordinate) {
+    const line = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "line"
+    );
+
+    line.setAttribute("x1", x1.toString());
+    line.setAttribute("y1", y1.toString());
+    line.setAttribute("x2", x2.toString());
+    line.setAttribute("y2", y2.toString());
+    return line;
+}
+
+interface PolyResult {
+    polyline: SVGPolylineElement,
+    polygon: SVGPolygonElement,
+}
+function generate_poly<T extends "polyline" | "polygon">(coords: Coordinate[], type: T): PolyResult[T] {
+    const points: string[] = [];
+    for (const [x, y] of coords) {
+        points.push(`${x},${y}`);
+    }
+
+    const poly = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        type
+    );
+    poly.setAttribute("points", points.join(' '));
+    poly.setAttribute("fill", "none");
+
+    return poly;
+}
+
+function generate_polyline(positions: Coordinate[]): SVGPolylineElement {
+    return generate_poly(positions, "polyline");
+}
+
+function generate_polygon(positions: Coordinate[]): SVGPolygonElement {
+    return generate_poly(positions, "polygon");
+}
+
 const nothing_render = () => {};
 
 const sudoku_render: PureRenderer = function (ctx: RenderContext) {
     for (let i = 0; i < 20; i++) {
-        const line = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "line"
-        );
+        const [x1, x2, y1, y2] = i >= 10 ? [0.025, 9, i % 10, i % 10] : [i % 10, i % 10, 0.025, 9];
 
-        const [x1, x2, y1, y2] = (i >= 10 ? [0.025, 9, i % 10, i % 10] : [i % 10, i % 10, 0.025, 9]).map(String);
-
-        line.setAttribute("x1", x1);
-        line.setAttribute("y1", y1);
-        line.setAttribute("x2", x2);
-        line.setAttribute("y2", y2);
-
+        const line = generate_line([x1, y1], [x2, y2]);
         line.setAttribute("stroke", "#aaa");
         line.setAttribute("stroke-width", "0.01");
         line.setAttribute("stroke-dasharray", "0.15 0.05");
@@ -55,58 +103,34 @@ const sudoku_render: PureRenderer = function (ctx: RenderContext) {
 }
 
 const row_render: PureRenderer = function (ctx: RenderContext) {
+    const d = 0.035;
     for (let i = 0; i <= 9; i++) {
-        const line = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "line"
-        );
-
-        line.setAttribute("x1", "0");
-        line.setAttribute("y1", i.toString());
-        line.setAttribute("x2", "9");
-        line.setAttribute("y2", i.toString());
-
+        const line = generate_line([-d / 2, i], [9 + d / 2, i]);
         line.setAttribute("stroke", "#777");
-        line.setAttribute("stroke-width", "0.035");
+        line.setAttribute("stroke-width", d.toString());
 
         ctx.layer_middle.appendChild(line);
     }
 }
 
 const column_render: PureRenderer = function (ctx: RenderContext) {
+    const d = 0.035;
     for (let i = 0; i <= 9; i++) {
-        const line = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "line"
-        );
-
-        line.setAttribute("x1", i.toString());
-        line.setAttribute("y1", "0");
-        line.setAttribute("x2", i.toString());
-        line.setAttribute("y2", "9");
-
+        const line = generate_line([i, -d / 2], [i, 9 + d / 2]);
         line.setAttribute("stroke", "#777");
-        line.setAttribute("stroke-width", "0.035");
+        line.setAttribute("stroke-width", d.toString());
 
         ctx.layer_middle.appendChild(line);
     }
 }
 
 const box_render: PureRenderer = function (ctx: RenderContext) {
+    const d = 0.06;
     for (let i = 0; i < 8; i++) {
-        const line = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "line"
-        );
-
         const i3 = (i % 4) * 3;
-        const [x1, x2, y1, y2] = (i >= 4 ? [-0.03, 9.03, i3, i3] : [i3, i3, -0.03, 9.03]).map(String);
+        const [x1, x2, y1, y2] = i >= 4 ? [-d / 2, 9 + d / 2, i3, i3] : [i3, i3, -d / 2, 9 + d / 2];
 
-        line.setAttribute("x1", x1);
-        line.setAttribute("y1", y1);
-        line.setAttribute("x2", x2);
-        line.setAttribute("y2", y2);
-
+        const line = generate_line([x1, y1], [x2, y2]);
         line.setAttribute("stroke", "black");
         line.setAttribute("stroke-width", "0.06");
 
@@ -115,30 +139,24 @@ const box_render: PureRenderer = function (ctx: RenderContext) {
 }
 
 const segment_render: Renderer<SegmentRule> = function (ctx: RenderContext, rule: SegmentRule) {
+    const d = 0.06, d2 = d / 2;
+
     const encode = ([r, c]: Position) => r * 100 + c;
-    const lambda_generator: ((p: Position) => [Position, Position, Position])[] = [
-        ([r, c]) => [[r - 1, c], [c - 0.03, r], [c + 1.03, r]],
-        ([r, c]) => [[r, c - 1], [c, r - 0.03], [c, r + 1.03]],
-        ([r, c]) => [[r + 1, c], [c + 1.03, r + 1], [c - 0.03, r + 1]],
-        ([r, c]) => [[r, c + 1], [c + 1, r + 1.03], [c + 1, r - 0.03]],
-    ]
+    const lambda_generator: ((p: Position) => [Position, Coordinate, Coordinate])[] = [
+        ([r, c]) => [[r - 1, c] as Position, [c - d2, r], [c + 1 + d2, r]],
+        ([r, c]) => [[r, c - 1] as Position, [c, r - d2], [c, r + 1 + d2]],
+        ([r, c]) => [[r + 1, c] as Position, [c + 1 + d2, r + 1], [c - d2, r + 1]],
+        ([r, c]) => [[r, c + 1] as Position, [c + 1, r + 1 + d2], [c + 1, r - d2]],
+    ];
 
     for (const cells of rule.render_state.regions) {
         const set = new Set(cells.map(encode));
-        for (const cell of cells) {
+        for (const [r, c] of cells) {
             for (let i = 0; i < 4; i++) {
-                const [neighbor, [x1, y1], [x2, y2]] = lambda_generator[i](cell);
+                const [neighbor, c1, c2] = lambda_generator[i]([r, c]);
                 if (set.has(encode(neighbor))) continue;
-                const line = document.createElementNS(
-                    "http://www.w3.org/2000/svg",
-                    "line"
-                );
 
-                line.setAttribute("x1", x1.toString());
-                line.setAttribute("y1", y1.toString());
-                line.setAttribute("x2", x2.toString());
-                line.setAttribute("y2", y2.toString());
-
+                const line = generate_line(c1, c2);
                 line.setAttribute("stroke", "black");
                 line.setAttribute("stroke-width", "0.06");
 
@@ -149,15 +167,11 @@ const segment_render: Renderer<SegmentRule> = function (ctx: RenderContext, rule
 }
 
 const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: LinkRule) {
+    const d = 0.13;
     for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
-        const poly = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "polygon"
-        );
-
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
-        const d = 0.13;
-        poly.setAttribute("points", `${cx},${cy - d} ${cx + d},${cy} ${cx},${cy + d} ${cx - d},${cy}`);
+        const points: Coordinate[] = [[cx, cy - d], [cx + d, cy], [cx, cy + d], [cx - d, cy]];
+        const poly = generate_polygon(points);
         poly.setAttribute("fill", "white");
         poly.setAttribute("stroke", "black");
         poly.setAttribute("stroke-width", "0.03");
@@ -168,37 +182,15 @@ const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: Link
 
 const lotus_render: Renderer<LotusRule> = function (ctx: RenderContext, rule: LotusRule) {
     for (const [r, c] of rule.render_state.cells) {
-        const circle = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "circle"
-        );
+        const circle = generate_circle([r, c]);
 
-        circle.setAttribute("cx", (c + 0.5).toString());
-        circle.setAttribute("cy", (r + 0.5).toString());
         circle.setAttribute("r", "0.3");
-
         circle.setAttribute("fill", "rgba(189, 235, 107, 0.5)");
         circle.setAttribute("stroke", "rgba(189, 235, 107, 1)");
         circle.setAttribute("stroke-width", "0.05");
 
         ctx.layer_bottom.appendChild(circle);
     }
-}
-
-function generate_polyline(line: Position[]): SVGPolylineElement {
-    const points: string[] = [];
-    for (const [r, c] of line) {
-        points.push(`${c + 0.5},${r + 0.5}`);
-    }
-
-    const poly = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "polyline"
-    );
-    poly.setAttribute("points", points.join(' '));
-    poly.setAttribute("fill", "none");
-
-    return poly;
 }
 
 const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: MetroRule) {
@@ -208,18 +200,13 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
         if (h >= 150) h += 60;
         const color = `hsla(${h}, 80%, 40%, 0.4)`;
         for (const [r, c] of metro) {
-            const circle = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "circle"
-            );
-            circle.setAttribute('cx', (c + 0.5).toString());
-            circle.setAttribute("cy", (r + 0.5).toString());
+            const circle = generate_circle([r, c]);
             circle.setAttribute("r", "0.06");
             circle.setAttribute("fill", color);
             ctx.layer_bottom.appendChild(circle);
         }
 
-        const poly = generate_polyline(metro);
+        const poly = generate_polyline(metro.map(pos_to_coord));
         poly.setAttribute("stroke", color);
         poly.setAttribute("stroke-width", "0.12");
         poly.setAttribute("stroke-linejoin", "round");
@@ -231,7 +218,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
 
 const stream_render: Renderer<StreamRule> = function (ctx: RenderContext, rule: StreamRule) {
     for (const stream of rule.render_state.streams) {
-        const poly = generate_polyline(stream);
+        const poly = generate_polyline(stream.map(pos_to_coord));
         poly.setAttribute("stroke", `rgba(94, 234, 234, 0.5)`);
         poly.setAttribute("stroke-width", "0.1");
 
@@ -247,18 +234,12 @@ const inversion_render: Renderer<InversionRule> = function (ctx: RenderContext, 
         );
         g.setAttribute("opacity", "0.5");
 
-        const [r1, c1] = line[0];
-        const circle = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "circle"
-        );
-        circle.setAttribute("cx", (c1 + 0.5).toString());
-        circle.setAttribute("cy", (r1 + 0.5).toString());
+        const circle = generate_circle(line[0]);
         circle.setAttribute("r", "0.2");
         circle.setAttribute("fill", "rgb(30, 194, 112)");
         g.appendChild(circle);
 
-        const poly = generate_polyline(line);
+        const poly = generate_polyline(line.map(pos_to_coord));
         poly.setAttribute("stroke", "rgb(30, 194, 112)");
         poly.setAttribute("stroke-width", "0.15");
         poly.setAttribute("stroke-linejoin", "round");
@@ -273,21 +254,16 @@ const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: Pr
     for (const [r1, c1, r2, c2, type] of rule.render_state.edges) {
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
         const d = 0.18, r3 = 3 ** 0.5, dx = d / 2 * r3, dy = d / 2;
-        const points = [
-            `${cx},${cy - d}`,
-            `${cx + dx},${cy - dy}`,
-            `${cx + dx},${cy + dy}`,
-            `${cx},${cy + d}`,
-            `${cx - dx},${cy + dy}`,
-            `${cx - dx},${cy - dy}`,
+        const points: Coordinate[] = [
+            [cx, cy - d],
+            [cx + dx, cy - dy],
+            [cx + dx, cy + dy],
+            [cx, cy + d],
+            [cx - dx, cy + dy],
+            [cx - dx, cy - dy],
         ];
 
-        const poly = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "polygon"
-        );
-
-        poly.setAttribute("points", points.join(' '));
+        const poly = generate_polygon(points);
         poly.setAttribute("fill", type ? "rgba(255, 0, 0, 0.8)" : "rgba(0, 0, 255, 0.8)");
         poly.setAttribute("stroke", "white");
         poly.setAttribute("stroke-width", "0.01");
@@ -308,14 +284,9 @@ const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: Po
         const d = 0.11;
 
         const points = triangle_rotation((c2 - c1) * d, (r2 - r1) * d)
-            .map(([x, y]) => `${x + cx},${y + cy}`);
+            .map(([x, y]): [number, number] => [x + cx, y + cy]);
 
-        const poly = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "polygon"
-        );
-
-        poly.setAttribute("points", points.join(' '));
+        const poly = generate_polygon(points);
         poly.setAttribute("fill", "black");
         poly.setAttribute("stroke", "white");
         poly.setAttribute("stroke-width", "0.025");
@@ -326,22 +297,15 @@ const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: Po
 
 const reference_render: Renderer<ReferenceRule> = function (ctx: RenderContext, rule: ReferenceRule) {
     for (const [direction, index] of rule.render_state.lines) {
-        const line = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "line"
-        );
+        let line: SVGLineElement;
 
-        if (direction === "ROW") {
-            line.setAttribute("x1", "0");
-            line.setAttribute("y1", `${index + 0.5}`);
-            line.setAttribute("x2", "9");
-            line.setAttribute("y2", `${index + 0.5}`);
-        }
-        if (direction === "COL") {
-            line.setAttribute("x1", `${index + 0.5}`);
-            line.setAttribute("y1", "0");
-            line.setAttribute("x2", `${index + 0.5}`);
-            line.setAttribute("y2", "9");
+        switch (direction as Direction) {
+            case "ROW":
+                line = generate_line([0, index + 0.5], [9, index + 0.5]);
+                break;
+            case "COL":
+                line = generate_line([index + 0.5, 0], [index + 0.5, 9]);
+                break;
         }
 
         line.setAttribute("stroke", "rgba(255, 0, 0, 0.3)");
@@ -384,15 +348,10 @@ const root_render: Renderer<RootRule> = function (ctx: RenderContext, rule: Root
 
 const temperature_render: Renderer<TemperatureRule> = function (ctx: RenderContext, rule: TemperatureRule) {
     for (const {cells: [[r1, c1], [r2, c2], [r3, c3]], color} of rule.render_state.regions) {
-        const poly = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "polyline"
-        );
-
-        const points = [
-            `${c1 + 0.5 + (c1 - c2) * 0.3},${r1 + 0.5 + (r1 - r2) * 0.3}`,
-            `${c2 + 0.5},${r2 + 0.5}`,
-            `${c3 + 0.5 + (c3 - c2) * 0.3},${r3 + 0.5 + (r3 - r2) * 0.3}`,
+        const points: [number, number][] = [
+            [c1 + 0.5 + (c1 - c2) * 0.3, r1 + 0.5 + (r1 - r2) * 0.3],
+            [c2 + 0.5, r2 + 0.5],
+            [c3 + 0.5 + (c3 - c2) * 0.3, r3 + 0.5 + (r3 - r2) * 0.3],
         ];
         const new_color = {
             "red": "rgba(255, 0, 0, 0.4)",
@@ -400,7 +359,7 @@ const temperature_render: Renderer<TemperatureRule> = function (ctx: RenderConte
             "blue": "rgba(0, 0, 255, 0.4)",
         }[color];
 
-        poly.setAttribute("points", points.join(' '));
+        const poly = generate_polyline(points);
         poly.setAttribute("fill", "none");
         poly.setAttribute("stroke", new_color);
         poly.setAttribute("stroke-width", "0.6");
@@ -421,14 +380,9 @@ const vector_render: Renderer<VectorRule> = function (ctx: RenderContext, rule: 
     for (const [r, c, direction] of rule.render_state.arrows) {
         const [x, y] = direction_map[direction];
         const points = triangle_rotation(x, y)
-            .map(([nx, ny]) => `${nx + c + 0.5 - 0.2 * x},${ny + r + 0.5 - 0.2 * y}`);
+            .map(([nx, ny]): [number, number] => [nx + c + 0.5 - 0.2 * x, ny + r + 0.5 - 0.2 * y]);
 
-        const poly = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "polygon"
-        );
-
-        poly.setAttribute("points", points.join(' '));
+        const poly = generate_polygon(points)
         poly.setAttribute("fill", "rgba(255, 0, 106, 0.5)");
         ctx.layer_bottom.appendChild(poly);
     }
@@ -442,12 +396,10 @@ const pair_render: Renderer<PairRule> = function (ctx: RenderContext, rule: Pair
         const y1 = Math.min(r1, r2) + d;
         const y2 = Math.max(r1, r2) + 1 - d;
 
-        const poly = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "polygon"
-        );
-        poly.setAttribute("points", `${x1},${y1} ${x2},${y1} ${x2},${y2} ${x1},${y2}`);
-        poly.setAttribute("fill", "rgba(151, 104, 255, 0.25)");
+        const points: [number, number][] = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
+        const poly = generate_polygon(points);
+
+        poly.setAttribute("fill", "rgba(151, 104, 255, 0.2)");
         poly.setAttribute("stroke", "rgba(151, 104, 255, 0.8)");
         poly.setAttribute("stroke-width", "0.02");
         poly.setAttribute("stroke-dasharray", "0.12 0.08");
@@ -471,18 +423,9 @@ function side_render(ctx: RenderContext, rule: SideRule, color: string) {
         const get_pos = generate_get_pos(direction, index);
 
         for (const b of [-0.5, 0.5]) {
-            const line = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "line"
-            );
-
             const [x1, y1] = get_pos(-0.5, b);
             const [x2, y2] = get_pos(cells.length - 0.5, b);
-
-            line.setAttribute("x1", x1.toString());
-            line.setAttribute("y1", y1.toString());
-            line.setAttribute("x2", x2.toString());
-            line.setAttribute("y2", y2.toString());
+            const line = generate_line([x1, y1], [x2, y2]);
 
             line.setAttribute("stroke", "#aaa");
             line.setAttribute("stroke-width", "0.05");

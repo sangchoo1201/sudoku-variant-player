@@ -1,5 +1,12 @@
 import type {CellType} from "./main.ts";
-import type {Position, RuleID, SolvingState} from "./schema.ts";
+import {
+    type Digit,
+    type Position,
+    position_generator,
+    type PositionExpanded,
+    type RuleID,
+    type SolvingState
+} from "./schema.ts";
 
 export const InputMode = {
     Normal: "normal",
@@ -115,6 +122,7 @@ let default_input_alphabet: boolean = false;
 let input_alphabet: boolean | null = null;
 let selected = new Set<number>();
 const encode = ([r, c]: Position) => r * 100 + c;
+const decode = (k: number) => [Math.floor(k / 100), k % 100] as Position;
 
 let cell_map: CellType[][];
 let right: HTMLDivElement[];
@@ -172,8 +180,7 @@ export function is_selected(pos: Position): boolean {
 export function get_single_selection_or_null(): Position | null {
     if (selected.size !== 1) return null;
     const [k] = selected.values();
-    const r = Math.floor(k / 100), c = k % 100;
-    return [r, c];
+    return decode(k);
 }
 
 export function get_last_cell(): HTMLDivElement | null {
@@ -212,12 +219,10 @@ export function remove_selection(pos: Position) {
 
 export function reset_selection() {
     selected.clear();
-    for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-            const cell = cell_map[r][c].cell;
-            cell.classList.remove('selected');
-            cell.classList.remove('selected-last');
-        }
+    for (const [r, c] of position_generator()) {
+        const cell = cell_map[r][c].cell;
+        cell.classList.remove('selected');
+        cell.classList.remove('selected-last');
     }
     last_cell = null;
 }
@@ -225,7 +230,7 @@ export function reset_selection() {
 function is_common(value: string) {
     const mode = get_input_mode();
     for (let k of selected) {
-        const r = Math.floor(k / 100), c = k % 100;
+        const [r, c] = decode(k);
         const cell = solving_state.board[r][c];
         if (mode === InputMode.Color && !cell.color[value]) {
             return false;
@@ -252,7 +257,7 @@ function normal_modify([r, c]: Position, modify: ModifyType) {
     if (cell_state.fixed) return;
 
     if (modify.type === "add") {
-        cell_state.number = Number(modify.value);
+        cell_state.number = Number(modify.value) as Digit;
         cell_element.normal.textContent = modify.value;
         cell_element.cell.classList.add('filled');
     } else {
@@ -338,8 +343,7 @@ export function apply_value(value: string) {
 
     const add = !is_common(value);
     selected.forEach(k => {
-        const r = Math.floor(k / 100), c = k % 100;
-        modify_functions[mode]([r, c], (add ? Modify.add : Modify.remove)(value));
+        modify_functions[mode](decode(k), (add ? Modify.add : Modify.remove)(value));
     });
 }
 
@@ -351,7 +355,7 @@ export function clear_value() {
         [InputMode.Color]: false,
     };
     selected.forEach(k => {
-        const r = Math.floor(k / 100), c = k % 100;
+        const [r, c] = decode(k);
         const cell = solving_state.board[r][c];
         if (Object.keys(cell.color).length !== 0) has_mode[InputMode.Color] = true;
         if (cell.fixed) return;
@@ -372,12 +376,11 @@ export function clear_value() {
     if (mode === null) return;
 
     selected.forEach(k => {
-        const r = Math.floor(k / 100), c = k % 100;
-        modify_functions[mode]([r, c], Modify.reset());
+        modify_functions[mode](decode(k), Modify.reset());
     });
 }
 
-export function show_errors(errors: Partial<Record<RuleID, Position[]>>) {
+export function show_errors(errors: Partial<Record<RuleID, PositionExpanded[]>>) {
     for (let i = 0; i < 9; i++) {
         for (let j = 0; j < 9; j++) {
             const cell = cell_map[i][j].cell;
@@ -389,39 +392,36 @@ export function show_errors(errors: Partial<Record<RuleID, Position[]>>) {
 
     for (const [_, error] of entries(errors)) {
         if (error === undefined) continue;
-        for (const [r, c] of error) {
-            if (r === 9) {
-                const side = bottom[c];
+        for (const [a, b] of error) {
+            if (a === 'right') {
+                const side = right[b];
                 side.classList.add('error');
                 continue;
             }
-            if (c === 9) {
-                const side = right[r];
+            if (a === 'bottom') {
+                const side = bottom[b];
                 side.classList.add('error');
                 continue;
             }
-            const cell = cell_map[r][c].cell;
+            const cell = cell_map[a][b].cell;
             cell.classList.add('error');
         }
     }
 }
 
 export function selection_to_text(select_all: boolean = false): string {
-    let texts: string[][] = [];
+    let texts: string[][] = [[], [], [], [], [], [], [], [], []];
     let mn_row = 8, mx_row = 0, mn_col = 8, mx_col = 0;
-    for (let r = 0; r < 9; r++) {
-        texts.push([]);
-        for (let c = 0; c < 9; c++) {
-            if (!(selected.has(encode([r, c])) || select_all)) {
-                texts[r].push(" ");
-                continue;
-            }
-            mn_row = Math.min(mn_row, r);
-            mx_row = Math.max(mx_row, r);
-            mn_col = Math.min(mn_col, c);
-            mx_col = Math.max(mx_col, c);
-            texts[r].push((solving_state.board[r][c].number ?? 0).toString());
+    for (const [r, c] of position_generator()) {
+        if (!(selected.has(encode([r, c])) || select_all)) {
+            texts[r].push(" ");
+            continue;
         }
+        mn_row = Math.min(mn_row, r);
+        mx_row = Math.max(mx_row, r);
+        mn_col = Math.min(mn_col, c);
+        mx_col = Math.max(mx_col, c);
+        texts[r].push((solving_state.board[r][c].number ?? 0).toString());
     }
     return texts.slice(mn_row, mx_row + 1).map(s => s.slice(mn_col, mx_col + 1).join("")).join("\n");
 }

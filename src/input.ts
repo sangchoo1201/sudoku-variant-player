@@ -1,4 +1,4 @@
-import type {Rule, SolvingState} from "./schema.ts";
+import {type BoardCoord, type Position, position_generator, type Rule, type SolvingState} from "./schema.ts";
 import {check_all} from "./rule.ts";
 import {
     add_selection, apply_value, clear_value, cycle_default_input_mode,
@@ -123,10 +123,8 @@ export function setup_listeners(
         if (modifiers.control && !input_alphabet) {
             if (code === 'KeyA') {
                 e.preventDefault();
-                for (let r = 0; r < 9; r++) {
-                    for (let c = 0; c < 9; c++) {
-                        add_selection([r, c], false);
-                    }
+                for (const [r, c] of position_generator()) {
+                    add_selection([r, c], false);
                 }
                 return;
             }
@@ -153,7 +151,7 @@ export function setup_listeners(
             if (!(modifiers.shift || modifiers.control)) {
                 reset_selection();
             }
-            add_selection([nr, nc]);
+            add_selection([nr, nc] as Position);
             return;
         }
 
@@ -213,8 +211,8 @@ export function setup_listeners(
             return;
         }
 
-        const r = Number(target.dataset.row);
-        const c = Number(target.dataset.col);
+        const r = Number(target.dataset.row) as BoardCoord;
+        const c = Number(target.dataset.col) as BoardCoord;
         const multi_select = e.ctrlKey || e.metaKey || e.shiftKey;
 
         drag_mode = DragMode.Add;
@@ -239,8 +237,8 @@ export function setup_listeners(
         const target = (e.target as HTMLElement).closest('.cell') as HTMLDivElement;
         if (!target) return;
 
-        const r = Number(target.dataset.row);
-        const c = Number(target.dataset.col);
+        const r = Number(target.dataset.row) as BoardCoord;
+        const c = Number(target.dataset.col) as BoardCoord;
 
         const value = solving_state.board[r][c].number;
 
@@ -248,11 +246,9 @@ export function setup_listeners(
 
         reset_selection();
 
-        for (let i = 0; i < 9; i++) {
-            for (let j = 0; j < 9; j++) {
-                if (solving_state.board[i][j].number === value) {
-                    add_selection([i, j], false);
-                }
+        for (const [i, j] of position_generator()) {
+            if (solving_state.board[i][j].number === value) {
+                add_selection([i, j], false);
             }
         }
         set_last_cell([r, c]);
@@ -267,8 +263,8 @@ export function setup_listeners(
 
         if (!target) return;
 
-        const r = Number(target.dataset.row);
-        const c = Number(target.dataset.col);
+        const r = Number(target.dataset.row) as BoardCoord;
+        const c = Number(target.dataset.col) as BoardCoord;
 
         if (drag_mode === DragMode.Add) {
             add_selection([r, c]);

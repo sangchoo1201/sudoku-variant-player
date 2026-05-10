@@ -1,18 +1,64 @@
 import { z } from "zod";
 
-const PositionSchema = z.tuple([z.number(), z.number()]);
+const BoardCoordSchema = z.union([
+    z.literal(0),
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+    z.literal(6),
+    z.literal(7),
+    z.literal(8),
+]);
+export type BoardCoord = z.infer<typeof BoardCoordSchema>;
+export const board_coords = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 
+const PositionSchema = z.tuple([BoardCoordSchema, BoardCoordSchema]);
 export type Position = z.infer<typeof PositionSchema>;
+
+export type Side = "right" | "bottom";
+export type PositionExpanded =
+    Position |
+    ["right", BoardCoord] |
+    ["bottom", BoardCoord];
+
+export function* position_generator(
+    [r1, c1]: Position = [0, 0], [r2, c2]: Position = [8, 8]
+): Generator<Position> {
+    for (const r of board_coords) {
+        for (const c of board_coords) {
+            if (r1 <= r && r <= r2 && c1 <= c && c <= c2) yield [r, c];
+        }
+    }
+}
+
+const DigitSchema = z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+    z.literal(6),
+    z.literal(7),
+    z.literal(8),
+    z.literal(9),
+]);
+export type Digit = z.infer<typeof DigitSchema>;
+export const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
+const DirectionSchema = z.enum(["ROW", "COL"]);
+export type Direction = z.infer<typeof DirectionSchema>;
 
 const FixedCellStateSchema = z.object({
     fixed: z.literal(true),
-    number: z.number(),
+    number: DigitSchema,
     color: z.record(z.string(), z.literal(true)),
 });
 
 const EmptyCellStateSchema = z.object({
     fixed: z.literal(false),
-    number: z.number().nullable(),
+    number: DigitSchema.nullable(),
     corner: z.record(z.string(), z.literal(true)),
     center: z.record(z.string(), z.literal(true)),
     color: z.record(z.string(), z.literal(true)),
@@ -108,9 +154,9 @@ const SequenceRuleSchema = z.object({
     render_state: z.object({
         side_hints: z.array(
             z.tuple([
-                z.enum(["ROW", "COL"]),
-                z.number(),
-                z.array(z.number()),
+                DirectionSchema,
+                BoardCoordSchema,
+                z.array(DigitSchema),
             ])
         ),
     }),
@@ -123,9 +169,9 @@ const QuantumRuleSchema = z.object({
     render_state: z.object({
         side_hints: z.array(
             z.tuple([
-                z.enum(["ROW", "COL"]),
-                z.number(),
-                z.tuple([z.number(), z.number()]),
+                DirectionSchema,
+                BoardCoordSchema,
+                z.tuple([DigitSchema, DigitSchema]),
             ])
         ),
     }),
@@ -138,9 +184,9 @@ const RangeRuleSchema = z.object({
     render_state: z.object({
         side_hints: z.array(
             z.tuple([
-                z.enum(["ROW", "COL"]),
-                z.number(),
-                z.tuple([z.number()]),
+                DirectionSchema,
+                BoardCoordSchema,
+                z.tuple([z.int()]),
             ])
         ),
     }),
@@ -157,8 +203,8 @@ const ReferenceRuleSchema = z.object({
     render_state: z.object({
         lines: z.array(
             z.tuple([
-                z.enum(["ROW", "COL"]),
-                z.number(),
+                DirectionSchema,
+                BoardCoordSchema,
             ])
         ),
     }),
@@ -171,10 +217,10 @@ const PrismRuleSchema = z.object({
     render_state: z.object({
         edges: z.array(
             z.tuple([
-                z.number(),
-                z.number(),
-                z.number(),
-                z.number(),
+                BoardCoordSchema,
+                BoardCoordSchema,
+                BoardCoordSchema,
+                BoardCoordSchema,
                 z.boolean(),
             ])
         ),
@@ -201,7 +247,7 @@ const RootRuleSchema = z.object({
     id: z.literal("[RT]"),
     render_state: z.object({
         cells: z.array(
-            z.tuple([z.number(), z.number(), z.number()])
+            z.tuple([BoardCoordSchema, BoardCoordSchema, z.int()])
         ),
     }),
 });
@@ -225,7 +271,7 @@ const StencilRuleSchema = z.object({
         pieces: z.array(
             z.object({
                 cells: z.array(PositionSchema),
-                values: z.record(z.string(), z.number().optional()),
+                values: z.record(z.string(), DigitSchema.optional()),
             })
         ),
     }),
@@ -237,7 +283,7 @@ const VectorRuleSchema = z.object({
     id: z.literal("[VT]"),
     render_state: z.object({
         arrows: z.array(
-            z.tuple([z.number(), z.number(), z.enum(["L", "R", "U", "D"])])
+            z.tuple([BoardCoordSchema, BoardCoordSchema, z.enum(["L", "R", "U", "D"])])
         ),
     }),
 });
@@ -311,7 +357,7 @@ export type SideRule = SequenceRule | QuantumRule | RangeRule;
 export const PuzzleDataSchema = z.object({
     id: z.string(),
     difficulty: z.union([z.number(), z.literal("?")]),
-    board: z.array(z.array(z.number()).length(9)).length(9),
+    board: z.array(z.array(z.union([DigitSchema, z.literal(0)])).length(9)).length(9),
     rules: z.array(RuleSchema),
     solving_state: SolvingStateSchema.optional()
 });

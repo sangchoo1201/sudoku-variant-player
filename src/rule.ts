@@ -1,29 +1,48 @@
-import type {
-    Position,
-    Rule,
-    SolvingState,
-    SegmentRule,
-    LinkRule,
-    LotusRule,
-    MetroRule,
-    SequenceRule,
-    QuantumRule,
-    RangeRule,
-    ReferenceRule,
-    PrismRule,
-    TemperatureRule,
-    RootRule, PointRule, StencilRule, RuleID, VectorRule, StreamRule, PairRule, InversionRule,
+import {
+    type Position,
+    type Rule,
+    type SolvingState,
+    type SegmentRule,
+    type LinkRule,
+    type LotusRule,
+    type MetroRule,
+    type SequenceRule,
+    type QuantumRule,
+    type RangeRule,
+    type ReferenceRule,
+    type PrismRule,
+    type TemperatureRule,
+    type RootRule,
+    type PointRule,
+    type StencilRule,
+    type RuleID,
+    type VectorRule,
+    type StreamRule,
+    type PairRule,
+    type InversionRule,
+    type BoardCoord,
+    type Direction,
+    type Digit,
+    board_coords, digits, position_generator, type PositionExpanded, type Side,
 } from "./schema.ts";
 
-type RuleCheckingResult = [true, []] | [false, Position[]];
+type RuleCheckingResult = [true, []] | [false, PositionExpanded[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
 
+function is_coord(n: number): n is BoardCoord {
+    return Number.isInteger(n) && 0 <= n && n < 9;
+}
+
+function digit_to_coord(digit: Digit): BoardCoord {
+    return digit - 1 as BoardCoord;
+}
+
 function create_error_collector() {
-    const errors: Position[] = [];
-    const unique = new Set<number>();
-    const encode = ([r, c]: Position) => r * 100 + c;
+    const errors: PositionExpanded[] = [];
+    const unique = new Set<string>();
+    const encode = ([r, c]: Position) => `${r},${c}`;
 
     return {
         add(pos: Position) {
@@ -40,18 +59,37 @@ function create_error_collector() {
             }
         },
 
+        add_side(side: Side, index: BoardCoord) {
+            const key = `${side},${index}`;
+            if (unique.has(key)) return;
+
+            unique.add(key);
+            errors.push([side, index]);
+        },
+
+        add_direction(direction: Direction, index: BoardCoord) {
+            switch (direction) {
+                case "ROW":
+                    this.add_side("right", index);
+                    break;
+                case "COL":
+                    this.add_side("bottom", index);
+                    break;
+            }
+        },
+
         result(): RuleCheckingResult {
             return errors.length ? [false, errors] : [true, []];
         }
     }
 }
 
-function generate_get_pos(direction: "ROW" | "COL", index: number): (x: number) => [number, number] {
+function generate_get_pos(direction: Direction, index: BoardCoord): (x: BoardCoord) => Position {
     switch (direction) {
         case "ROW":
-            return (x: number) => [index, x];
+            return (x: BoardCoord) => [index, x];
         case "COL":
-            return (x: number) => [x, index];
+            return (x: BoardCoord) => [x, index];
     }
 }
 
@@ -61,16 +99,20 @@ function generic_duplicate_check(
     const errors = create_error_collector();
 
     for (let i = 0; i < 9; i++) {
-        let numbers = Object.fromEntries(
-            Array.from({length: 9}, (_, i) => [i + 1, []])
-        ) as Record<number, number[]>;
+        let numbers = digits.reduce(
+            (acc, d) => {
+                acc[d] = [];
+                return acc;
+            },
+            {} as Record<Digit, number[]>
+        );
         for (let j = 0; j < 9; j++) {
             const [r, c] = map(i, j);
             const cell_data = solving_state.board[r][c];
             if (cell_data.number === null) continue;
             numbers[cell_data.number].push(j);
         }
-        for (let n = 1; n <= 9; n++) {
+        for (const n of digits) {
             if (numbers[n].length >= 2) {
                 numbers[n].forEach(j => errors.add(map(i, j)));
             }
@@ -90,15 +132,13 @@ function generic_pair_check(
 
     const errors = create_error_collector();
 
-    for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-            const cell_data = solving_state.board[r][c];
-            if (cell_data.number === null) continue;
+    for (const [r, c] of position_generator()){
+        const cell_data = solving_state.board[r][c];
+        if (cell_data.number === null) continue;
 
-            for (const [nr, nc] of get_neighbors(r, c)) {
-                if (cell_data.number === solving_state.board[nr][nc].number) {
-                    errors.add([r, c]);
-                }
+        for (const [nr, nc] of get_neighbors(r, c)) {
+            if (cell_data.number === solving_state.board[nr][nc].number) {
+                errors.add([r, c]);
             }
         }
     }
@@ -114,14 +154,14 @@ const sudoku_check: PureCheckingFunction = (solving_state: SolvingState): RuleCh
     ), []];
 
 const row_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
-    generic_duplicate_check(solving_state, (row, index) => [row, index]);
+    generic_duplicate_check(solving_state, (row, index) => [row, index] as Position);
 
 const column_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
-    generic_duplicate_check(solving_state, (col, index) => [index, col]);
+    generic_duplicate_check(solving_state, (col, index) => [index, col] as Position);
 
 const box_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
     generic_duplicate_check(solving_state, (box, index) =>
-        [Math.floor(box / 3) * 3 + Math.floor(index / 3), (box % 3) * 3 + (index % 3)]
+        [(Math.floor(box / 3) * 3 + Math.floor(index / 3)), (box % 3) * 3 + (index % 3)] as Position
     );
 
 const segment_check: RuleCheckingFunction<SegmentRule> = (solving_state: SolvingState, rule: SegmentRule): RuleCheckingResult =>
@@ -163,7 +203,7 @@ const lotus_check: RuleCheckingFunction<LotusRule> = function (
             .map(([dr, dc]): [number, number] => [r + dr, c + dc])
             .filter(([nr, nc]) => nr >= 0 && nr < 9 && nc >= 0 && nc < 9);
 
-        let has_greater = false, has_smaller = false;
+        let has_greater = false, has_smaller = false, has_same = false;
 
         for (const [nr, nc] of neighbors) {
             const num = solving_state.board[nr][nc].number;
@@ -171,8 +211,9 @@ const lotus_check: RuleCheckingFunction<LotusRule> = function (
 
             if (num > value) has_greater = true;
             if (num < value) has_smaller = true;
+            if (num === value) has_same = true;
 
-            if (has_greater && has_smaller) {
+            if (has_greater && has_smaller || has_same) {
                 errors.add([r, c]);
                 break;
             }
@@ -219,14 +260,15 @@ const sequence_check: RuleCheckingFunction<SequenceRule> = function (
         const get_pos = generate_get_pos(direction, index);
 
         let j = 0;
-        for (let i = 0; i < 9 && j < sequence.length; i++) {
+        for (const i of board_coords) {
             const [r, c] = get_pos(i);
             const v = solving_state.board[r][c].number;
             if (v === null || v === sequence[j]) j++;
+            if (j >= sequence.length) break;
         }
 
         if (j !== sequence.length) {
-            errors.add(get_pos(9));
+            errors.add_direction(direction, index);
         }
     }
 
@@ -240,16 +282,16 @@ const quantum_check: RuleCheckingFunction<QuantumRule> = function (
 
     for (const [direction, index, [a, b]] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
-        const [r1, c1] = get_pos(a - 1), [r2, c2] = get_pos(b - 1);
+        const [r1, c1] = get_pos(digit_to_coord(a)), [r2, c2] = get_pos(digit_to_coord(b));
         const v1 = solving_state.board[r1][c1].number;
         const v2 = solving_state.board[r2][c2].number;
         if (v1 === null || v2 === null) continue;
 
         const cond1 = v1 == b, cond2 = v2 == a;
         if (cond1 === cond2) {
-            errors.add(get_pos(a - 1));
-            errors.add(get_pos(b - 1));
-            errors.add(get_pos(9));
+            errors.add(get_pos(digit_to_coord(a)));
+            errors.add(get_pos(digit_to_coord(b)));
+            errors.add_direction(direction, index);
         }
     }
 
@@ -263,13 +305,32 @@ const range_check: RuleCheckingFunction<RangeRule> = function (
 
     for (const [direction, index, [distance]] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
-        const one_pos: number[] = [], nine_pos: number[] = [];
+        const one_pos: BoardCoord[] = [], nine_pos: BoardCoord[] = [];
 
-        for (let i = 0; i < 9; i++) {
+        for (const i of board_coords) {
             const [r, c] = get_pos(i);
             const v = solving_state.board[r][c].number;
             if (v === 1) one_pos.push(i);
             if (v === 9) nine_pos.push(i);
+        }
+
+        function can_be([r, c]: Position, target: Digit) {
+            const value = solving_state.board[r][c].number;
+            return value === null || value === target;
+        }
+        for (const one of one_pos) {
+            const i1 = one - distance, i2 = one + distance;
+            if (is_coord(i1) && can_be(get_pos(i1), 9)) continue;
+            if (is_coord(i2) && can_be(get_pos(i2), 9)) continue;
+            errors.add(get_pos(one));
+            errors.add_direction(direction, index);
+        }
+        for (const nine of nine_pos) {
+            const i1 = nine - distance, i2 = nine + distance;
+            if (is_coord(i1) && can_be(get_pos(i1), 1)) continue;
+            if (is_coord(i2) && can_be(get_pos(i2), 1)) continue;
+            errors.add(get_pos(nine));
+            errors.add_direction(direction, index);
         }
 
         for (const one of one_pos) {
@@ -277,7 +338,7 @@ const range_check: RuleCheckingFunction<RangeRule> = function (
                 if (Math.abs(one - nine) === distance) continue;
                 errors.add(get_pos(one));
                 errors.add(get_pos(nine));
-                errors.add(get_pos(9));
+                errors.add_direction(direction, index);
             }
         }
     }
@@ -290,24 +351,22 @@ const quad_check: PureCheckingFunction = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-            const positions: Position[] = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]];
-            let has_even = false, has_odd = false;
+    for (const [r, c] of position_generator([0, 0], [7, 7])) {
+        const positions: Position[] = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]] as Position[];
+        let has_even = false, has_odd = false;
 
-            for (const [i, j] of positions) {
-                const v = solving_state.board[i][j].number;
-                if (v === null) {
-                    has_even = has_odd = true;
-                    break;
-                }
-                if (v % 2 === 0) has_even = true;
-                if (v % 2 === 1) has_odd = true;
+        for (const [i, j] of positions) {
+            const v = solving_state.board[i][j].number;
+            if (v === null) {
+                has_even = has_odd = true;
+                break;
             }
+            if (v % 2 === 0) has_even = true;
+            if (v % 2 === 1) has_odd = true;
+        }
 
-            if (!(has_even && has_odd)) {
-                errors.add_all(positions);
-            }
+        if (!(has_even && has_odd)) {
+            errors.add_all(positions);
         }
     }
 
@@ -321,12 +380,12 @@ const reference_check: RuleCheckingFunction<ReferenceRule> = function (
 
     for (const [direction, index] of rule.render_state.lines) {
         const get_pos = generate_get_pos(direction, index);
-        for (let i = 0; i < 9; i++) {
+        for (const i of board_coords) {
             const [r, c] = get_pos(i);
             const v = solving_state.board[r][c].number;
             if (v === null) continue;
 
-            const get_reference_pos = generate_get_pos(direction, v - 1);
+            const get_reference_pos = generate_get_pos(direction, digit_to_coord(v));
             const [ref_r, ref_c] = get_reference_pos(i);
             const ref_v = solving_state.board[ref_r][ref_c].number;
             if (ref_v !== null && ref_v !== index + 1) {
@@ -367,16 +426,18 @@ const temperature_check: RuleCheckingFunction<TemperatureRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    outer: for (const {cells, color} of rule.render_state.regions) {
+    for (const {cells, color} of rule.render_state.regions) {
         let sum = 0;
+        let remaining = 3;
         for (const [r, c] of cells) {
             const value = solving_state.board[r][c].number;
-            if (value === null) continue outer;
+            if (value === null) continue;
             sum += value;
+            remaining--;
         }
-        if (sum <= 10 && color == 'blue') continue;
-        if (sum == 15 && color == 'green') continue;
-        if (sum >= 20 && color == 'red') continue;
+        if ((sum + remaining) <= 10 && color == 'blue') continue;
+        if (Math.abs(15 - sum) <= remaining * 9 && color == 'green') continue;
+        if ((sum + remaining * 9) >= 20 && color == 'red') continue;
         errors.add_all(cells);
     }
 
@@ -430,21 +491,25 @@ const point_check: RuleCheckingFunction<PointRule> = function (
     return errors.result();
 }
 
-function match_piece(solving_state: SolvingState, positions: [Position, number][]): RuleCheckingResult {
-    const max_row = positions.reduce((mx, [[r, _c], _v]) => Math.max(mx, r), 0);
-    const max_col = positions.reduce((mx, [[_r, c], _v]) => Math.max(mx, c), 0);
+function match_piece(solving_state: SolvingState, positions: [Position, Digit][]): Position[] {
+    const max_row = positions.reduce(
+        (mx, [[r, _c], _v]): BoardCoord => Math.max(mx, r) as BoardCoord,
+        0 as BoardCoord
+    );
+    const max_col = positions.reduce(
+        (mx, [[_r, c], _v]): BoardCoord => Math.max(mx, c) as BoardCoord,
+        0 as BoardCoord
+    );
 
-    for (let r = 0; r < 9 - max_row; r++) {
-        for (let c = 0; c < 9 - max_col; c++) {
-            if (positions.every(
-                ([[dr, dc], v]) =>
-                    solving_state.board[r + dr][c + dc].number === v
-            )) {
-                return [false, positions.map(([[dr, dc], _]) => [r + dr, c + dc])];
-            }
+    for (const [r, c] of position_generator([0, 0], [max_row, max_col])) {
+        if (positions.every(
+            ([[dr, dc], v]) =>
+                solving_state.board[r + dr][c + dc].number === v
+        )) {
+            return positions.map(([[dr, dc], _]: [Position, Digit]): Position => [r + dr, c + dc] as Position);
         }
     }
-    return [true, []];
+    return [];
 }
 
 const stencil_check: RuleCheckingFunction<StencilRule> = function (
@@ -453,31 +518,29 @@ const stencil_check: RuleCheckingFunction<StencilRule> = function (
     const errors = create_error_collector();
 
     for (const {values} of rule.render_state.pieces) {
-        const positions: [Position, number][] = [];
-        let max_row = 0, max_col = 0;
+        const positions: [Position, Digit][] = [];
+        let max_row: BoardCoord = 0, max_col: BoardCoord = 0;
         for (const key in values) {
-            const [r, c] = key.split(',').map(Number);
+            const [r, c] = key.split(',').map(Number) as Position;
             const v = values[key]!;
-            max_row = Math.max(max_row, r);
-            max_col = Math.max(max_col, c);
+            max_row = Math.max(max_row, r) as BoardCoord;
+            max_col = Math.max(max_col, c) as BoardCoord;
             positions.push([[r, c], v]);
         }
 
-        const transforms: (([p, n]: [Position, number]) => [Position, number])[] = [
+        const transforms: (([p, n]: [Position, Digit]) => [Position, Digit])[] = [
             ([[r, c], n]) => [[r, c], n],
-            ([[r, c], n]) => [[max_row - r, c], n],
-            ([[r, c], n]) => [[r, max_col - c], n],
-            ([[r, c], n]) => [[max_row - r, max_col - c], n],
+            ([[r, c], n]) => [[max_row - r, c] as Position, n],
+            ([[r, c], n]) => [[r, max_col - c] as Position, n],
+            ([[r, c], n]) => [[max_row - r, max_col - c] as Position, n],
         ];
 
-        const transpose: (b: boolean) => ([p, n]: [Position, number]) => [Position, number] =
-            (b) =>
-                ([[r, c], n]) => b ? [[c, r], n] : [[r, c], n];
+        const transpose: (b: boolean) => ([p, n]: [Position, Digit]) => [Position, Digit] =
+            (b) => ([[r, c], n]) => b ? [[c, r], n] : [[r, c], n];
 
         for (let i = 0; i < 8; i++) {
             const new_positions = positions.map(transforms[i % 4]);
-            const [success, error] = match_piece(solving_state, new_positions.map(transpose(i >= 4)));
-            if (!success) errors.add_all(error);
+            errors.add_all(match_piece(solving_state, new_positions.map(transpose(i >= 4))));
         }
     }
 
@@ -501,7 +564,7 @@ const vector_check: RuleCheckingFunction<VectorRule> = function (
         if (v === null) continue;
         const [dr, dc] = direction_map[direction];
         const nr = r + dr * v, nc = c + dc * v;
-        if (!(0 <= nr && nr < 9 && 0 <= nc && nc < 9)) {
+        if (!(is_coord(nr) && is_coord(nc))) {
             errors.add([r, c]);
             continue;
         }
@@ -619,9 +682,9 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
 
 export function check_all(
     solving_state: SolvingState, rules: Rule[]
-): [boolean, Partial<Record<RuleID, Position[]>>] {
+): [boolean, Partial<Record<RuleID, PositionExpanded[]>>] {
     let correct = true;
-    const errors: Partial<Record<RuleID, Position[]>> = {};
+    const errors: Partial<Record<RuleID, PositionExpanded[]>> = {};
 
     for (const rule of rules) {
         const id = rule.id;
