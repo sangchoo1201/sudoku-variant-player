@@ -21,6 +21,10 @@ const direction_map: Partial<Record<string, [number, number]>> = {
     "ArrowLeft": [0, -1],
     "ArrowDown": [1, 0],
     "ArrowRight": [0, 1],
+    "KeyW": [-1, 0],
+    "KeyA": [0, -1],
+    "KeyS": [1, 0],
+    "KeyD": [0, 1],
 } as const;
 
 let drag_mode: DragMode = DragMode.None;
@@ -103,6 +107,22 @@ export function setup_listeners(
         alert("Board data copied!");
     });
 
+    function move_selection(code: string) {
+        const last_cell = get_last_cell();
+        const direction = direction_map[code];
+        if (direction === undefined || last_cell === null) return;
+
+        const r = Number(last_cell.dataset.row);
+        const c = Number(last_cell.dataset.col);
+        const [dr, dc] = direction;
+        const nr = (r + dr + 9) % 9, nc = (c + dc + 9) % 9;
+
+        if (!(modifiers.shift || modifiers.control)) {
+            reset_selection();
+        }
+        add_selection([nr, nc] as Position);
+    }
+
     window.addEventListener('keydown', (e) => {
         if (e.repeat) return; // 꾹 누름 방지
 
@@ -117,16 +137,34 @@ export function setup_listeners(
         if (modifiers.alt) set_input_alphabet(true);
 
         const input_alphabet = get_input_alphabet();
-        const last_cell = get_last_cell();
 
         // shortcuts
-        if (modifiers.control && !input_alphabet) {
-            if (code === 'KeyA') {
+        if (!input_alphabet) {
+            if (modifiers.control && code === 'KeyA') {
                 e.preventDefault();
                 for (const [r, c] of position_generator()) {
                     add_selection([r, c], false);
                 }
                 return;
+            }
+
+            for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD'] as const) {
+                if (code === key) {
+                    move_selection(code);
+                    return;
+                }
+            }
+
+            for (const [key, mode] of [
+                ['KeyZ', InputMode.Normal],
+                ['KeyX', InputMode.Corner],
+                ['KeyC', InputMode.Center],
+                ['KeyV', InputMode.Color],
+            ] as const) {
+                if (code === key) {
+                    set_default_input_mode(mode);
+                    return;
+                }
             }
         }
 
@@ -140,18 +178,7 @@ export function setup_listeners(
 
         // 방향키 이동
         if (code.startsWith('Arrow')) {
-            const direction = direction_map[code];
-            if (direction === undefined || last_cell === null) return;
-
-            const r = Number(last_cell.dataset.row);
-            const c = Number(last_cell.dataset.col);
-            const [dr, dc] = direction;
-            const nr = (r + dr + 9) % 9, nc = (c + dc + 9) % 9;
-
-            if (!(modifiers.shift || modifiers.control)) {
-                reset_selection();
-            }
-            add_selection([nr, nc] as Position);
+            move_selection(code);
             return;
         }
 
