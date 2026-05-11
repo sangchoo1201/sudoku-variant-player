@@ -236,7 +236,7 @@ html, body, #app {
 button {
     aspect-ratio: 1;
 
-    display: flex;
+    position: relative;
     align-items: center;
     justify-content: center;
 
@@ -244,6 +244,15 @@ button {
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+}
+
+.button-color {
+    position: absolute;
+    width: 60%;
+    height: 60%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 button:focus {

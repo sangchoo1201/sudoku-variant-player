@@ -52,16 +52,16 @@ const Modify = {
 };
 
 const color_map: string[] = [
-    "rgba(0, 0, 0, 0.5)",
-    "rgba(166, 219, 87, 0.5)",
-    "rgba(221, 103, 234, 0.5)",
-    "rgba(219, 132, 26, 0.5)",
-    "rgba(239, 27, 23, 0.5)",
-    "rgba(249, 227, 29, 0.5)",
-    "rgba(28, 134, 239, 0.5)",
-    "rgba(191, 191, 191, 0.5)",
-    "rgba(127, 127, 127, 0.5)",
-    "rgba(63, 63, 63, 0.5)",
+    "rgba(0, 0, 0)",
+    "rgb(166, 219, 87)",
+    "rgb(221, 103, 234)",
+    "rgb(219, 132, 26)",
+    "rgb(239, 27, 23)",
+    "rgb(249, 227, 29)",
+    "rgb(28, 134, 239)",
+    "rgb(191, 191, 191)",
+    "rgb(127, 127, 127)",
+    "rgb(63, 63, 63)",
 ];
 
 function entries<T extends object>(obj: T) {
@@ -108,6 +108,19 @@ function create_polygons(colors: number[]): SVGElement[] {
     return paths;
 }
 
+const digit_buttons: HTMLButtonElement[] = Array.from(
+    { length: 10 },
+    (_, i) => document.querySelector<HTMLButtonElement>(`#button-${i}`)!,
+);
+
+for (let i = 0; i <= 9; i++) {
+    const div = document.createElement("div");
+    div.classList.add("button-color");
+    div.hidden = true;
+    div.style.background = color_map[i];
+    digit_buttons[i].appendChild(div);
+}
+
 const mode_buttons: Record<InputMode, HTMLButtonElement> = {
     [InputMode.Normal]: document.querySelector<HTMLButtonElement>("#button-normal")!,
     [InputMode.Corner]: document.querySelector<HTMLButtonElement>("#button-corner")!,
@@ -144,6 +157,10 @@ export function show_current_input_mode() {
         } else {
             button.classList.remove("selected-mode");
         }
+    }
+    const hidden = mode !== InputMode.Color;
+    for (const digit_button of digit_buttons) {
+        digit_button.querySelector<HTMLDivElement>(".button-color")!.hidden = hidden;
     }
 }
 
