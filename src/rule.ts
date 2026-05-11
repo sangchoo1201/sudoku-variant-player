@@ -31,8 +31,15 @@ type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
 
+const adjacent = [[0, -1], [0, 1], [-1, 0], [1, 0]] as const;
+
 function is_coord(n: number): n is BoardCoord {
     return Number.isInteger(n) && 0 <= n && n < 9;
+}
+
+function is_pos(p: [number, number]): p is Position {
+    const [r, c] = p;
+    return is_coord(r) && is_coord(c);
 }
 
 function digit_to_coord(digit: Digit): BoardCoord {
@@ -199,9 +206,9 @@ const lotus_check: RuleCheckingFunction<LotusRule> = function (
         const value = solving_state.board[r][c].number;
         if (value === null) continue;
 
-        const neighbors: [number, number][] = ([[-1, 0], [0, -1], [1, 0], [0, 1]] as [number, number][])
+        const neighbors: Position[] = adjacent
             .map(([dr, dc]): [number, number] => [r + dr, c + dc])
-            .filter(([nr, nc]) => nr >= 0 && nr < 9 && nc >= 0 && nc < 9);
+            .filter(is_pos);
 
         let has_greater = false, has_smaller = false, has_same = false;
 
@@ -654,6 +661,47 @@ const inversion_check: RuleCheckingFunction<InversionRule> = function (
     return errors.result();
 }
 
+const escape_check: PureCheckingFunction = function (solving_state: SolvingState): RuleCheckingResult {
+    const errors = create_error_collector();
+    const encode: (p: Position) => string = ([r, c]) => `${r},${c}`;
+    const visited = new Set<string>();
+
+    function bfs(pos: Position): Position[] {
+        const queue: Position[] = [pos];
+        visited.add(encode(pos));
+        let head = 0;
+        while (head < queue.length) {
+            const [r, c] = queue[head++];
+            const neighbors: Position[] = adjacent
+                .map(([dr, dc]) => [r + dr, c + dc] as [number, number]).filter(is_pos);
+            for (const [nr, nc] of neighbors) {
+                if (visited.has(encode([nr, nc]))) continue;
+                const v = solving_state.board[nr][nc].number;
+                if ((v === null || v % 2 === 0)) {
+                    queue.push([nr, nc]);
+                    visited.add(encode([nr, nc]));
+                }
+            }
+        }
+        return queue;
+    }
+
+    loop: for (const [r, c] of position_generator()) {
+        if (visited.has(encode([r, c]))) continue;
+        const v = solving_state.board[r][c].number;
+        if (v === null || v % 2 !== 0) continue;
+
+        const region = bfs([r, c]);
+        for (const [nr, _] of region) {
+            if (nr === 0 || nr === 8) continue loop;
+        }
+
+        errors.add_all(region);
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -661,6 +709,7 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[B]": box_check,
     "[DT]": distant_check,
     "[QD]": quad_check,
+    "[ES]": escape_check,
     "[SG]": (s: SolvingState, r: Rule) => segment_check(s, r as SegmentRule),
     "[LK]": (s: SolvingState, r: Rule) => link_check(s, r as LinkRule),
     "[LO]": (s: SolvingState, r: Rule) => lotus_check(s, r as LotusRule),

@@ -319,6 +319,10 @@ const InversionRuleSchema = z.object({
 
 export type InversionRule = z.infer<typeof InversionRuleSchema>;
 
+const EscapeRuleSchema = z.object({
+    id: z.literal("[ES]"),
+});
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -347,6 +351,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     StreamRuleSchema,
     PairRuleSchema,
     InversionRuleSchema,
+    EscapeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

@@ -218,11 +218,35 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
 
 const stream_render: Renderer<StreamRule> = function (ctx: RenderContext, rule: StreamRule) {
     for (const stream of rule.render_state.streams) {
-        const poly = generate_polyline(stream.map(pos_to_coord));
-        poly.setAttribute("stroke", `rgba(94, 234, 234, 0.5)`);
-        poly.setAttribute("stroke-width", "0.1");
+        const g = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "g"
+        );
+        g.setAttribute("opacity", "0.5");
 
-        ctx.layer_bottom.appendChild(poly);
+        const outside_functions: ((p: Position) => [boolean, Coordinate])[] = [
+            ([r, c]) => [r === 0 && (c === 0 || c === 8), [c + 0.5, 0]],
+            ([r, c]) => [r === 8 && (c === 0 || c === 8), [c + 0.5, 9]],
+            ([r, c]) => [c === 0 && (r === 0 || r === 8), [0, r + 0.5]],
+            ([r, c]) => [c === 8 && (r === 0 || r === 8), [9, r + 0.5]],
+        ]
+        for (const pos of stream) {
+            for (const outside of outside_functions) {
+                const [condition, coord] = outside(pos);
+                if (!condition) continue;
+                const line = generate_line(pos_to_coord(pos), coord);
+                line.setAttribute("stroke", "rgba(94, 234, 234)");
+                line.setAttribute("stroke-width", "0.3");
+                g.appendChild(line);
+            }
+        }
+
+        const poly = generate_polyline(stream.map(pos_to_coord));
+        poly.setAttribute("stroke", "rgba(94, 234, 234)");
+        poly.setAttribute("stroke-width", "0.3");
+
+        g.appendChild(poly);
+        ctx.layer_bottom.appendChild(g);
     }
 }
 
@@ -474,6 +498,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[B]": box_render,
     "[DT]": nothing_render,
     "[QD]": nothing_render,
+    "[ES]": nothing_render,
     "[SG]": (ctx, r) => segment_render(ctx, r as SegmentRule),
     "[LK]": (ctx, r) => link_render(ctx, r as LinkRule),
     "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
