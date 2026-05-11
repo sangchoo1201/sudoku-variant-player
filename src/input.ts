@@ -1,11 +1,10 @@
-import {type BoardCoord, type Position, position_generator, type Rule, type SolvingState} from "./schema.ts";
-import {check_all} from "./rule.ts";
+import {type BoardCoord, type Position, position_generator, type SolvingState} from "./schema.ts";
 import {
     add_selection, apply_value, clear_value, cycle_default_input_mode,
     get_input_alphabet, get_last_cell, get_single_selection_or_null,
     InputMode, type InputMode as InputModeType, is_selected,
     remove_selection, reset_selection, selection_to_text,
-    set_input_alphabet, set_input_mode, set_last_cell, show_errors, set_default_input_mode,
+    set_input_alphabet, set_input_mode, set_last_cell, set_default_input_mode,
     show_current_input_mode,
 } from "./cell.ts";
 
@@ -44,7 +43,7 @@ function config_input_mode() {
 }
 
 export function setup_listeners(
-    solving_state: SolvingState, rules: Rule[]
+    solving_state: SolvingState,
 ) {
     for (const [input_mode, button_id] of [
         [InputMode.Normal, 'button-normal'],
@@ -62,16 +61,12 @@ export function setup_listeners(
         const button = document.querySelector<HTMLButtonElement>(`#button-${i}`)!;
         button.addEventListener('pointerdown', () => {
             apply_value(i.toString());
-            const [_, errors] = check_all(solving_state, rules);
-            show_errors(errors);
         });
     }
 
     const button_delete = document.querySelector<HTMLButtonElement>('#button-delete')!;
     button_delete.addEventListener('pointerdown', () => {
         clear_value();
-        const [_, errors] = check_all(solving_state, rules);
-        show_errors(errors);
     });
 
     const button_load_file = document.querySelector<HTMLButtonElement>('#button-load-file')!;
@@ -197,9 +192,6 @@ export function setup_listeners(
         if (code === 'Backspace' || code === 'Delete') {
             clear_value();
         }
-
-        const [_, errors] = check_all(solving_state, rules);
-        show_errors(errors);
     });
 
     window.addEventListener("keyup", (e) => {

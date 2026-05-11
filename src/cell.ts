@@ -4,9 +4,10 @@ import {
     type Position,
     position_generator,
     type PositionExpanded,
-    type RuleID,
+    type Rule,
     type SolvingState
 } from "./schema.ts";
+import {check_all} from "./rule.ts";
 
 export const InputMode = {
     Normal: "normal",
@@ -141,12 +142,14 @@ let cell_map: CellType[][];
 let right: HTMLDivElement[];
 let bottom: HTMLDivElement[];
 let solving_state: SolvingState;
+let rules: Rule[];
 
-export function init_cell_map(map: CellType[][], r: HTMLDivElement[], b: HTMLDivElement[], state: SolvingState) {
+export function init_all(map: CellType[][], r: HTMLDivElement[], b: HTMLDivElement[], state: SolvingState, rule: Rule[]) {
     cell_map = map;
     right = r;
     bottom = b;
     solving_state = state;
+    rules = rule;
 }
 
 export function show_current_input_mode() {
@@ -271,7 +274,7 @@ function is_common(value: string) {
 function normal_modify([r, c]: Position, modify: ModifyType) {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed) return;
+    if (cell_state.fixed) return false;
 
     if (modify.type === "add") {
         cell_state.number = Number(modify.value) as Digit;
@@ -282,6 +285,7 @@ function normal_modify([r, c]: Position, modify: ModifyType) {
         cell_element.normal.textContent = '';
         cell_element.cell.classList.remove('filled');
     }
+    return true;
 }
 
 function set_modify(set: Record<string, true>, modify: ModifyType) {
@@ -344,11 +348,11 @@ function color_modify([r, c]: Position, modify: ModifyType) {
     }
 }
 
-const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => void> = {
+const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => boolean> = {
     [InputMode.Normal]: normal_modify,
-    [InputMode.Corner]: corner_modify,
-    [InputMode.Center]: center_modify,
-    [InputMode.Color]: color_modify,
+    [InputMode.Corner]: (p, m) => { corner_modify(p, m); return false; },
+    [InputMode.Center]: (p, m) => { center_modify(p, m); return false; },
+    [InputMode.Color]: (p, m) => { color_modify(p, m); return false; },
 } as const;
 
 export function apply_value(value: string) {
@@ -359,9 +363,13 @@ export function apply_value(value: string) {
     if ((mode === InputMode.Color || !alphabet) && !('0' <= value && value <= '9')) return;
 
     const add = !is_common(value);
+    let changed = false;
     selected.forEach(k => {
-        modify_functions[mode](decode(k), (add ? Modify.add : Modify.remove)(value));
+        const result = modify_functions[mode](decode(k), (add ? Modify.add : Modify.remove)(value));
+        if (result) changed = true;
     });
+
+    if (changed) show_errors();
 }
 
 export function clear_value() {
@@ -392,12 +400,35 @@ export function clear_value() {
     if (has_mode[input_mode]) mode = input_mode;
     if (mode === null) return;
 
+    let changed = false;
     selected.forEach(k => {
-        modify_functions[mode](decode(k), Modify.reset());
+        const result = modify_functions[mode](decode(k), Modify.reset());
+        if (result) changed = true;
     });
+
+    if (changed) show_errors();
 }
 
-export function show_errors(errors: Partial<Record<RuleID, PositionExpanded[]>>) {
+export function append_errors(error_positions: PositionExpanded[]) {
+    for (const [a, b] of error_positions) {
+        if (a === 'right') {
+            const side = right[b];
+            side.classList.add('error');
+            continue;
+        }
+        if (a === 'bottom') {
+            const side = bottom[b];
+            side.classList.add('error');
+            continue;
+        }
+        const cell = cell_map[a][b].cell;
+        cell.classList.add('error');
+    }
+}
+
+export function show_errors() {
+    const [_, errors] = check_all(solving_state, rules);
+
     for (let i = 0; i < 9; i++) {
         for (let j = 0; j < 9; j++) {
             const cell = cell_map[i][j].cell;
@@ -409,20 +440,7 @@ export function show_errors(errors: Partial<Record<RuleID, PositionExpanded[]>>)
 
     for (const [_, error] of entries(errors)) {
         if (error === undefined) continue;
-        for (const [a, b] of error) {
-            if (a === 'right') {
-                const side = right[b];
-                side.classList.add('error');
-                continue;
-            }
-            if (a === 'bottom') {
-                const side = bottom[b];
-                side.classList.add('error');
-                continue;
-            }
-            const cell = cell_map[a][b].cell;
-            cell.classList.add('error');
-        }
+        append_errors(error);
     }
 }
 

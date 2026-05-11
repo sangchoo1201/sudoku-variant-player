@@ -1,7 +1,8 @@
 import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
 import {render_all} from "./render.ts";
 import {setup_listeners} from "./input.ts";
-import {init_cell_map} from "./cell.ts";
+import {init_all} from "./cell.ts";
+import {trail_sat_init} from "./sat.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
@@ -195,9 +196,14 @@ const puzzle_data: PuzzleData = result.success ? result.data : default_data;
 const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
 
 const [cell_map, right, bottom] = setup_grid(puzzle_data);
-init_cell_map(cell_map, right, bottom, solving_state);
+init_all(cell_map, right, bottom, solving_state, puzzle_data.rules);
 render_all(puzzle_data.rules);
-setup_listeners(solving_state, puzzle_data.rules);
+setup_listeners(solving_state);
+for (const rule of puzzle_data.rules) {
+    if (rule.id === "[TR]") {
+        trail_sat_init(rule.render_state.start, rule.render_state.end);
+    }
+}
 
 document.title = `${puzzle_data.id} (sudoku-variant)`;
 for (const button of document.querySelectorAll('button')) {

@@ -14,6 +14,7 @@ import type {
     RuleID,
     SideRule,
     PointRule, VectorRule, StreamRule, PairRule, InversionRule, Position, Direction,
+    TrailRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -433,6 +434,18 @@ const pair_render: Renderer<PairRule> = function (ctx: RenderContext, rule: Pair
     }
 }
 
+const trail_render: Renderer<TrailRule> = function (ctx: RenderContext, rule: TrailRule) {
+    for (const [pos, color] of [
+        [rule.render_state.start, "rgba(0, 127, 255, 0.4)"],
+        [rule.render_state.end, "rgba(255, 127, 0, 0.4)"]
+    ] as [Position, string][]) {
+        const circle = generate_circle(pos);
+        circle.setAttribute("r", "0.4");
+        circle.setAttribute("fill", color);
+        ctx.layer_bottom.appendChild(circle);
+    }
+}
+
 function generate_get_pos(direction: "ROW" | "COL", index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW":
@@ -515,6 +528,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[SR]": (ctx, r) => stream_render(ctx, r as StreamRule),
     "[PA]": (ctx, r) => pair_render(ctx, r as PairRule),
     "[IV]": (ctx, r) => inversion_render(ctx, r as InversionRule),
+    "[TR]": (ctx, r) => trail_render(ctx, r as TrailRule),
     "[ST]": nothing_render,  // TODO
 };
 

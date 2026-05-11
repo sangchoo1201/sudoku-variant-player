@@ -23,8 +23,9 @@ import {
     type BoardCoord,
     type Direction,
     type Digit,
-    board_coords, digits, position_generator, type PositionExpanded, type Side,
+    board_coords, digits, position_generator, type PositionExpanded, type Side, type TrailRule,
 } from "./schema.ts";
+import {trail_sat_solve} from "./sat.ts";
 
 type RuleCheckingResult = [true, []] | [false, PositionExpanded[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
@@ -702,6 +703,20 @@ const escape_check: PureCheckingFunction = function (solving_state: SolvingState
     return errors.result();
 }
 
+const trail_check: RuleCheckingFunction<TrailRule> = function (
+    solving_state: SolvingState, rule: TrailRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const result = trail_sat_solve(solving_state.board);
+    if (!result) {
+        errors.add(rule.render_state.start);
+        errors.add(rule.render_state.end);
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -710,23 +725,24 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[DT]": distant_check,
     "[QD]": quad_check,
     "[ES]": escape_check,
-    "[SG]": (s: SolvingState, r: Rule) => segment_check(s, r as SegmentRule),
-    "[LK]": (s: SolvingState, r: Rule) => link_check(s, r as LinkRule),
-    "[LO]": (s: SolvingState, r: Rule) => lotus_check(s, r as LotusRule),
-    "[MR]": (s: SolvingState, r: Rule) => metro_check(s, r as MetroRule),
-    "[RF]": (s: SolvingState, r: Rule) => reference_check(s, r as ReferenceRule),
-    "[PR]": (s: SolvingState, r: Rule) => prism_check(s, r as PrismRule),
-    "[QT]": (s: SolvingState, r: Rule) => quantum_check(s, r as QuantumRule),
-    "[RG]": (s: SolvingState, r: Rule) => range_check(s, r as RangeRule),
-    "[SQ]": (s: SolvingState, r: Rule) => sequence_check(s, r as SequenceRule),
-    "[TM]": (s: SolvingState, r: Rule) => temperature_check(s, r as TemperatureRule),
-    "[RT]": (s: SolvingState, r: Rule) => root_check(s, r as RootRule),
-    "[PO]": (s: SolvingState, r: Rule) => point_check(s, r as PointRule),
-    "[ST]": (s: SolvingState, r: Rule) => stencil_check(s, r as StencilRule),
-    "[VT]": (s: SolvingState, r: Rule) => vector_check(s, r as VectorRule),
-    "[SR]": (s: SolvingState, r: Rule) => stream_check(s, r as StreamRule),
-    "[PA]": (s: SolvingState, r: Rule) => pair_check(s, r as PairRule),
-    "[IV]": (s: SolvingState, r: Rule) => inversion_check(s, r as InversionRule),
+    "[SG]": (s, r) => segment_check(s, r as SegmentRule),
+    "[LK]": (s, r) => link_check(s, r as LinkRule),
+    "[LO]": (s, r) => lotus_check(s, r as LotusRule),
+    "[MR]": (s, r) => metro_check(s, r as MetroRule),
+    "[RF]": (s, r) => reference_check(s, r as ReferenceRule),
+    "[PR]": (s, r) => prism_check(s, r as PrismRule),
+    "[QT]": (s, r) => quantum_check(s, r as QuantumRule),
+    "[RG]": (s, r) => range_check(s, r as RangeRule),
+    "[SQ]": (s, r) => sequence_check(s, r as SequenceRule),
+    "[TM]": (s, r) => temperature_check(s, r as TemperatureRule),
+    "[RT]": (s, r) => root_check(s, r as RootRule),
+    "[PO]": (s, r) => point_check(s, r as PointRule),
+    "[ST]": (s, r) => stencil_check(s, r as StencilRule),
+    "[VT]": (s, r) => vector_check(s, r as VectorRule),
+    "[SR]": (s, r) => stream_check(s, r as StreamRule),
+    "[PA]": (s, r) => pair_check(s, r as PairRule),
+    "[IV]": (s, r) => inversion_check(s, r as InversionRule),
+    "[TR]": (s, r) => trail_check(s, r as TrailRule),
 } as const;
 
 export function check_all(

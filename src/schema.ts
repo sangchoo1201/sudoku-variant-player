@@ -319,6 +319,16 @@ const InversionRuleSchema = z.object({
 
 export type InversionRule = z.infer<typeof InversionRuleSchema>;
 
+const TrailRuleSchema = z.object({
+    id: z.literal("[TR]"),
+    render_state: z.object({
+        start: PositionSchema,
+        end: PositionSchema,
+    }),
+});
+
+export type TrailRule = z.infer<typeof TrailRuleSchema>;
+
 const EscapeRuleSchema = z.object({
     id: z.literal("[ES]"),
 });
@@ -351,6 +361,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     StreamRuleSchema,
     PairRuleSchema,
     InversionRuleSchema,
+    TrailRuleSchema,
+
     EscapeRuleSchema,
 ]);
 
