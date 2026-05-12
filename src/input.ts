@@ -34,11 +34,12 @@ const modifiers = {
     alt: false,
 };
 
-export async function redirect_puzzle_id(puzzle_id: string) {
+export async function redirect_puzzle_id(puzzle_id: string, redirect: boolean) {
     const response = await fetch(`https://puzzle-id.sangchoo1201.workers.dev/get/${puzzle_id}`)
     const body = await response.text();
     if (!response.ok) {
         alert(`puzzle id #${puzzle_id} not found`);
+        if (redirect) location.href = '';
         return;
     }
     location.href = `?code=${body}`;
@@ -100,7 +101,7 @@ export function setup_listeners(
 
         const match = text.match(/^#?(\d+)$/);
         if (match !== null) {
-            await redirect_puzzle_id(match[1]);
+            await redirect_puzzle_id(match[1], false);
         } else {
             location.href = `?code=${text}`;
         }

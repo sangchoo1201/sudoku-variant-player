@@ -195,7 +195,7 @@ async function main() {
         const match = id.match(/^#?(\d+)$/);
         console.log();
         if (match !== null) {
-            await redirect_puzzle_id(match[1]);
+            await redirect_puzzle_id(match[1], true);
             return;
         }
     }
