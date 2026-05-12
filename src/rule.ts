@@ -717,6 +717,78 @@ const trail_check: RuleCheckingFunction<TrailRule> = function (
     return errors.result();
 }
 
+const triplet_check: PureCheckingFunction = function (solving_state: SolvingState): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [r2, c2] of position_generator([1, 1], [7, 7])) {
+        const v2 = solving_state.board[r2][c2].number;
+        if (v2 === null) continue;
+        for (const [r1, c1, r3, c3] of [
+            [r2 - 1, c2 - 1, r2 + 1, c2 + 1],
+            [r2 - 1, c2 + 1, r2 + 1, c2 - 1],
+        ] as BoardCoord[][]) {
+            const v1 = solving_state.board[r1][c1].number;
+            const v3 = solving_state.board[r3][c3].number;
+            if (v1 === null || v3 === null) continue;
+            if (v1 < v2 && v2 < v3 || v1 > v2 && v2 > v3) {
+                errors.add([r1, c1]);
+                errors.add([r2, c2]);
+                errors.add([r3, c3]);
+            }
+        }
+    }
+
+    return errors.result();
+}
+
+const epsilon_check: PureCheckingFunction = function (solving_state: SolvingState): RuleCheckingResult {
+    const errors = create_error_collector();
+    const encode: (p: Position) => string = ([r, c]) => `${r},${c}`;
+    const visited = new Set<string>();
+
+    function bfs(pos: Position): [Position[], Position[]] {
+        const queue: [Position, boolean][] = [[pos, true]];
+        const visited_empty: Set<string> = new Set();
+        visited.add(encode(pos));
+        let head = 0;
+        while (head < queue.length) {
+            const [[r, c], b] = queue[head++];
+            const neighbors: Position[] = adjacent
+                .map(([dr, dc]) => [r + dr, c + dc] as [number, number]).filter(is_pos);
+            for (const [nr, nc] of neighbors) {
+                const nk = encode([nr, nc]);
+                if (visited.has(nk) || visited_empty.has(nk)) continue;
+                const v = solving_state.board[nr][nc].number;
+                if (b && v !== null && v <= 4) {
+                    queue.push([[nr, nc], true]);
+                    visited.add(nk);
+                }
+                if (v === null) {
+                    queue.push([[nr, nc], false]);
+                    visited_empty.add(nk);
+                }
+            }
+        }
+        return [queue.filter(([_, b]) => b).map(([p, _]) => p), queue.filter(([_, b]) => !b).map(([p, _]) => p)];
+    }
+
+    for (const [r, c] of position_generator()) {
+        if (visited.has(encode([r, c]))) continue;
+        const v = solving_state.board[r][c].number;
+        if (v === null || v >= 5) continue;
+        const [epsilon, empty] = bfs([r, c]);
+        if (epsilon.length > 3) {
+            errors.add_all(epsilon);
+        }
+        if (epsilon.length + empty.length < 3) {
+            errors.add_all(epsilon);
+            errors.add_all(empty);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -725,6 +797,8 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[DT]": distant_check,
     "[QD]": quad_check,
     "[ES]": escape_check,
+    "[TP]": triplet_check,
+    "[EP]": epsilon_check,
     "[SG]": (s, r) => segment_check(s, r as SegmentRule),
     "[LK]": (s, r) => link_check(s, r as LinkRule),
     "[LO]": (s, r) => lotus_check(s, r as LotusRule),

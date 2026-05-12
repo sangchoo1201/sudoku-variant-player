@@ -333,6 +333,14 @@ const EscapeRuleSchema = z.object({
     id: z.literal("[ES]"),
 });
 
+const TripletRuleSchema = z.object({
+    id: z.literal("[TP]"),
+});
+
+const EpsilonRuleSchema = z.object({
+    id: z.literal("[EP]"),
+});
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -364,6 +372,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     TrailRuleSchema,
 
     EscapeRuleSchema,
+    TripletRuleSchema,
+    EpsilonRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
