@@ -94,18 +94,25 @@ html, body, #app {
 
 .row-clues {
     position: absolute;
-
     display: flex;
     flex-direction: column;
 
     transform: translateY(-50%);
+
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .column-clues {
     position: absolute;
-
     display: flex;
+
     transform: translateX(-50%);
+
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .error {

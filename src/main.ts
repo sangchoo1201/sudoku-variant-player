@@ -3,11 +3,11 @@ import {
     type BoardState,
     type PuzzleData,
     PuzzleDataSchema,
-    type DirectionExtended
+    type DirectionExtended, SolvingStateSchema
 } from "./schema.ts";
 import {render_all} from "./render.ts";
 import {redirect_puzzle_id, setup_listeners} from "./input.ts";
-import {init_all} from "./cell.ts";
+import {init_all, modify_all} from "./cell.ts";
 import {trail_sat_init} from "./sat.ts";
 
 const default_data: PuzzleData = {
@@ -164,7 +164,6 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
     ] as [HTMLElement, DirectionExtended][]) {
         if (direction.startsWith("ROW")) {
             const width = side_size[direction] / total_width_size;
-            console.log(direction, width);
             side_clue.style.width = `${width * 100}%`;
             side_clue.style.height = main_size_string;
             side_clue.style.top = `${cy * 100}%`;
@@ -265,7 +264,6 @@ async function main() {
     const id = url_params.get('id');
     if (id !== null) {
         const match = id.match(/^#?(\d+)$/);
-        console.log();
         if (match !== null) {
             await redirect_puzzle_id(match[1], true);
             return;
@@ -278,10 +276,23 @@ async function main() {
         alert("invalid code or variant not updated");
     }
     const puzzle_data: PuzzleData = result.success ? result.data : default_data;
-    const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
+    let solving_state: SolvingState;
+    if (puzzle_data.solving_state !== undefined) {
+        solving_state = puzzle_data.solving_state;
+    } else {
+        solving_state = generate_default_solving_state(puzzle_data);
+        const key = `sudoku_variant_${puzzle_data.id}`;
+        const data = localStorage.getItem(key);
+        if (data !== null) {
+            const result = SolvingStateSchema.safeParse(JSON.parse(data));
+            if (result.success) {
+                solving_state = result.data;
+            }
+        }
+    }
 
     const [cell_map, left, right, top, bottom] = setup_grid(puzzle_data);
-    init_all(cell_map, left, right, top, bottom, solving_state, puzzle_data.rules);
+    init_all(cell_map, left, right, top, bottom, solving_state, puzzle_data.rules, puzzle_data.id);
     render_all(puzzle_data.rules);
     setup_listeners(solving_state);
     for (const rule of puzzle_data.rules) {
@@ -289,6 +300,7 @@ async function main() {
             trail_sat_init(rule.render_state.start, rule.render_state.end);
         }
     }
+    modify_all();
 
     document.title = `${puzzle_data.id} (sudoku-variant)`;
     for (const button of document.querySelectorAll('button')) {

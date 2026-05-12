@@ -87,7 +87,7 @@ const BoardStateSchema = z.array(
 
 export type BoardState = z.infer<typeof BoardStateSchema>;
 
-const SolvingStateSchema = z.object({
+export const SolvingStateSchema = z.object({
     board: BoardStateSchema,
     undo: z.array(BoardChangeSchema),
     redo: z.array(BoardChangeSchema),

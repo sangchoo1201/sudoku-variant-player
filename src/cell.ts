@@ -34,7 +34,8 @@ const prev_mode: Record<InputMode, InputMode> = {
 type ModifyType =
     { type: "add", value: string } |
     { type: "remove", value: string } |
-    { type: "reset" };
+    { type: "reset" } |
+    { type: "nothing" };
 
 const Modify = {
     add: (value: string): ModifyType => ({
@@ -49,6 +50,10 @@ const Modify = {
 
     reset: (): ModifyType => ({
         type: 'reset',
+    }),
+
+    nothing: (): ModifyType => ({
+        type: 'nothing',
     }),
 };
 
@@ -145,6 +150,7 @@ let top: HTMLDivElement[];
 let bottom: HTMLDivElement[];
 let solving_state: SolvingState;
 let rules: Rule[];
+let puzzle_id: string;
 
 export function init_all(
     map: CellType[][],
@@ -153,7 +159,8 @@ export function init_all(
     t: HTMLDivElement[],
     b: HTMLDivElement[],
     state: SolvingState,
-    rule: Rule[]
+    rule: Rule[],
+    id: string,
 ) {
     cell_map = map;
     left = l;
@@ -162,6 +169,9 @@ export function init_all(
     bottom = b;
     solving_state = state;
     rules = rule;
+    puzzle_id = id;
+
+    show_errors();
 }
 
 export function show_current_input_mode() {
@@ -292,6 +302,11 @@ function normal_modify([r, c]: Position, modify: ModifyType) {
         cell_state.number = Number(modify.value) as Digit;
         cell_element.normal.textContent = modify.value;
         cell_element.cell.classList.add('filled');
+    } else if (modify.type === "nothing") {
+        cell_element.normal.textContent = cell_state.number?.toString() ?? '';
+        if (cell_state.number) {
+            cell_element.cell.classList.add('filled');
+        }
     } else {
         cell_state.number = null;
         cell_element.normal.textContent = '';
@@ -321,7 +336,7 @@ function set_modify(set: Record<string, true>, modify: ModifyType) {
 function corner_modify([r, c]: Position, modify: ModifyType) {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed || cell_state.number !== null) return;
+    if (cell_state.fixed || cell_state.number !== null && modify.type !== "nothing") return;
 
     set_modify(cell_state.corner, modify);
 
@@ -338,7 +353,7 @@ function corner_modify([r, c]: Position, modify: ModifyType) {
 function center_modify([r, c]: Position, modify: ModifyType) {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed || cell_state.number !== null) return;
+    if (cell_state.fixed || cell_state.number !== null && modify.type !== "nothing") return;
 
     set_modify(cell_state.center, modify);
 
@@ -367,6 +382,14 @@ const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => boolea
     [InputMode.Color]: (p, m) => { color_modify(p, m); return false; },
 } as const;
 
+export function modify_all() {
+    for (const p of position_generator()) {
+        for (const f of Object.values(modify_functions)) {
+            f(p, Modify.nothing());
+        }
+    }
+}
+
 export function apply_value(value: string) {
     const mode = get_input_mode();
     const alphabet = get_input_alphabet();
@@ -375,13 +398,14 @@ export function apply_value(value: string) {
     if ((mode === InputMode.Color || !alphabet) && !('0' <= value && value <= '9')) return;
 
     const add = !is_common(value);
-    let changed = false;
+    let digit_changed = false;
     selected.forEach(k => {
         const result = modify_functions[mode](decode(k), (add ? Modify.add : Modify.remove)(value));
-        if (result) changed = true;
+        if (result) digit_changed = true;
     });
 
-    if (changed) show_errors();
+    if (digit_changed) show_errors();
+    save_state();
 }
 
 export function clear_value() {
@@ -412,13 +436,19 @@ export function clear_value() {
     if (has_mode[input_mode]) mode = input_mode;
     if (mode === null) return;
 
-    let changed = false;
+    let digit_changed = false;
     selected.forEach(k => {
         const result = modify_functions[mode](decode(k), Modify.reset());
-        if (result) changed = true;
+        if (result) digit_changed = true;
     });
 
-    if (changed) show_errors();
+    if (digit_changed) show_errors();
+    save_state();
+}
+
+function save_state() {
+    const key = `sudoku_variant_${puzzle_id}`;
+    localStorage.setItem(key, JSON.stringify(solving_state));
 }
 
 export function append_errors(error_positions: PositionExtended[]) {
