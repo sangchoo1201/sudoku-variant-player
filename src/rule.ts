@@ -744,45 +744,44 @@ const triplet_check: PureCheckingFunction = function (solving_state: SolvingStat
 const epsilon_check: PureCheckingFunction = function (solving_state: SolvingState): RuleCheckingResult {
     const errors = create_error_collector();
     const encode: (p: Position) => string = ([r, c]) => `${r},${c}`;
-    const visited = new Set<string>();
 
     function bfs(pos: Position): [Position[], Position[]] {
-        const queue: [Position, boolean][] = [[pos, true]];
-        const visited_empty: Set<string> = new Set();
+        const queue: [Position, number][] = [[pos, 0]];
+        const visited = new Set<string>();
         visited.add(encode(pos));
         let head = 0;
         while (head < queue.length) {
-            const [[r, c], b] = queue[head++];
+            const [[r, c], step] = queue[head++];
             const neighbors: Position[] = adjacent
                 .map(([dr, dc]) => [r + dr, c + dc] as [number, number]).filter(is_pos);
             for (const [nr, nc] of neighbors) {
                 const nk = encode([nr, nc]);
-                if (visited.has(nk) || visited_empty.has(nk)) continue;
+                if (visited.has(nk)) continue;
                 const v = solving_state.board[nr][nc].number;
-                if (b && v !== null && v <= 4) {
-                    queue.push([[nr, nc], true]);
+                if (v !== null && v <= 4) {
+                    queue.push([[nr, nc], step === 0 ? 0 : 2]);
                     visited.add(nk);
                 }
-                if (v === null) {
-                    queue.push([[nr, nc], false]);
-                    visited_empty.add(nk);
+                if (step < 2 && v === null) {
+                    queue.push([[nr, nc], 1]);
+                    visited.add(nk);
                 }
             }
         }
-        return [queue.filter(([_, b]) => b).map(([p, _]) => p), queue.filter(([_, b]) => !b).map(([p, _]) => p)];
+        console.log(queue);
+        return [queue.filter(([_, b]) => b === 0).map(([p, _]) => p), queue.filter(([_, b]) => b !== 0).map(([p, _]) => p)];
     }
 
     for (const [r, c] of position_generator()) {
-        if (visited.has(encode([r, c]))) continue;
         const v = solving_state.board[r][c].number;
         if (v === null || v >= 5) continue;
-        const [epsilon, empty] = bfs([r, c]);
+        const [epsilon, candidate] = bfs([r, c]);
         if (epsilon.length > 3) {
             errors.add_all(epsilon);
         }
-        if (epsilon.length + empty.length < 3) {
+        if (epsilon.length + candidate.length < 3) {
             errors.add_all(epsilon);
-            errors.add_all(empty);
+            errors.add_all(candidate);
         }
     }
 
