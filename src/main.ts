@@ -202,7 +202,7 @@ async function main() {
     const code = url_params.get('code');
     const parsed_data = parse_data(code);
     const result = PuzzleDataSchema.safeParse(parsed_data);
-    if (!result.success) {
+    if (!result.success && code !== null) {
         alert("invalid code or variant not updated");
     }
     const puzzle_data: PuzzleData = result.success ? result.data : default_data;
