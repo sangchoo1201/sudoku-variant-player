@@ -225,17 +225,19 @@ const stream_render: Renderer<StreamRule> = function (ctx: RenderContext, rule: 
         );
         g.setAttribute("opacity", "0.5");
 
-        const outside_functions: ((p: Position) => [boolean, Coordinate])[] = [
-            ([r, c]) => [r === 0 && (c === 0 || c === 8), [c + 0.5, 0]],
-            ([r, c]) => [r === 8 && (c === 0 || c === 8), [c + 0.5, 9]],
-            ([r, c]) => [c === 0 && (r === 0 || r === 8), [0, r + 0.5]],
-            ([r, c]) => [c === 8 && (r === 0 || r === 8), [9, r + 0.5]],
+        const d = 0.3, d2 = d / 2;
+
+        const outside_functions: ((p: Position) => [boolean, Coordinate, Coordinate])[] = [
+            ([r, c]) => [r === 0, [c + 0.5, 0.5 + d2], [c + 0.5, 0]],
+            ([r, c]) => [r === 8, [c + 0.5, 8.5 - d2], [c + 0.5, 9]],
+            ([r, c]) => [c === 0, [0.5 + d2, r + 0.5], [0, r + 0.5]],
+            ([r, c]) => [c === 8, [8.5 - d2, r + 0.5], [9, r + 0.5]],
         ]
-        for (const pos of stream) {
+        for (const pos of [stream[0], stream[stream.length - 1]]) {
             for (const outside of outside_functions) {
-                const [condition, coord] = outside(pos);
+                const [condition, coord1, coord2] = outside(pos);
                 if (!condition) continue;
-                const line = generate_line(pos_to_coord(pos), coord);
+                const line = generate_line(coord1, coord2);
                 line.setAttribute("stroke", "rgba(94, 234, 234)");
                 line.setAttribute("stroke-width", "0.3");
                 g.appendChild(line);
