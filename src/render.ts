@@ -14,7 +14,7 @@ import type {
     RuleID,
     SideRule,
     PointRule, VectorRule, StreamRule, PairRule, InversionRule, Position, Direction,
-    TrailRule,
+    TrailRule, DirectionExtended, ProductRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -448,18 +448,24 @@ const trail_render: Renderer<TrailRule> = function (ctx: RenderContext, rule: Tr
     }
 }
 
-function generate_get_pos(direction: "ROW" | "COL", index: number): (n: number, b?: number) => [number, number] {
+function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
+        case "ROW_LEFT":
+            return (n: number, b: number = 0) => [-(n / 4) - 0.25, index + b + 0.5];
         case "ROW":
             return (n: number, b: number = 0) => [(n / 4) + 9.25, index + b + 0.5];
+        case "COL_TOP":
+            return (n: number, b: number = 0) => [index + b + 0.5, -(n / 2.8) - 0.25];
         case "COL":
             return (n: number, b: number = 0) => [index + b + 0.5, (n / 2.8) + 9.25];
     }
 }
 
 function side_render(ctx: RenderContext, rule: SideRule, color: string) {
-    for (const [direction, index, cells] of rule.render_state.side_hints) {
+    for (let [direction, index, cells] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
+
+        if (typeof cells === 'number') cells = [cells];
 
         for (const b of [-0.5, 0.5]) {
             const [x1, y1] = get_pos(-0.5, b);
@@ -478,10 +484,15 @@ function side_render(ctx: RenderContext, rule: SideRule, color: string) {
                 "text"
             );
 
-            const [x, y] = get_pos(i);
+            const t = value.toString();
+            let x = 0, y = 0;
+            if (direction === "ROW_LEFT" || direction === "ROW") {
+                [x, y] = get_pos(i + (t.length - 1) / 3);
+            } else {
+                [x, y] = get_pos(i);
+            }
 
-            text.textContent = value.toString();
-
+            text.textContent = t;
             text.setAttribute("x", x.toString());
             text.setAttribute("y", y.toString());
             text.setAttribute("text-anchor", "middle");
@@ -505,6 +516,9 @@ const quantum_render: Renderer<QuantumRule> = (ctx: RenderContext, rule: Quantum
 
 const range_render: Renderer<RangeRule> = (ctx: RenderContext, rule: RangeRule) =>
     side_render(ctx, rule, "blue");
+
+const product_render: Renderer<ProductRule> = (ctx: RenderContext, rule: ProductRule) =>
+    side_render(ctx, rule, "rgb(127, 52, 0)");
 
 const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[Sudoku]": sudoku_render,
@@ -533,6 +547,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[PA]": (ctx, r) => pair_render(ctx, r as PairRule),
     "[IV]": (ctx, r) => inversion_render(ctx, r as InversionRule),
     "[TR]": (ctx, r) => trail_render(ctx, r as TrailRule),
+    "[PD]": (ctx, r) => product_render(ctx, r as ProductRule),
     "[ST]": nothing_render,  // TODO
 };
 

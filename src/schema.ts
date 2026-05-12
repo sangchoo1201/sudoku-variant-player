@@ -17,10 +17,12 @@ export const board_coords = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 const PositionSchema = z.tuple([BoardCoordSchema, BoardCoordSchema]);
 export type Position = z.infer<typeof PositionSchema>;
 
-export type Side = "right" | "bottom";
-export type PositionExpanded =
+export type Side = "left" | "right" | "top" | "bottom";
+export type PositionExtended =
     Position |
+    ["left", BoardCoord] |
     ["right", BoardCoord] |
+    ["top", BoardCoord] |
     ["bottom", BoardCoord];
 
 export function* position_generator(
@@ -49,6 +51,8 @@ export const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 const DirectionSchema = z.enum(["ROW", "COL"]);
 export type Direction = z.infer<typeof DirectionSchema>;
+const DirectionExtendedSchema = z.enum(["ROW_LEFT", "ROW", "COL_TOP", "COL"]);
+export type DirectionExtended = z.infer<typeof DirectionExtendedSchema>;
 
 const FixedCellStateSchema = z.object({
     fixed: z.literal(true),
@@ -341,6 +345,21 @@ const EpsilonRuleSchema = z.object({
     id: z.literal("[EP]"),
 });
 
+const ProductRuleSchema = z.object({
+    id: z.literal("[PD]"),
+    render_state: z.object({
+        side_hints: z.array(
+            z.tuple([
+                DirectionExtendedSchema,
+                BoardCoordSchema,
+                z.number()
+            ])
+        ),
+    }),
+});
+
+export type ProductRule = z.infer<typeof ProductRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -374,12 +393,13 @@ const RuleSchema = z.discriminatedUnion("id", [
     EscapeRuleSchema,
     TripletRuleSchema,
     EpsilonRuleSchema,
+    ProductRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
 export type RuleID = z.infer<typeof RuleSchema>['id'];
 
-export type SideRule = SequenceRule | QuantumRule | RangeRule;
+export type SideRule = SequenceRule | QuantumRule | RangeRule | ProductRule;
 
 export const PuzzleDataSchema = z.object({
     id: z.string(),

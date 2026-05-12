@@ -23,11 +23,12 @@ import {
     type BoardCoord,
     type Direction,
     type Digit,
-    board_coords, digits, position_generator, type PositionExpanded, type Side, type TrailRule,
+    board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
+    type DirectionExtended,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
-type RuleCheckingResult = [true, []] | [false, PositionExpanded[]];
+type RuleCheckingResult = [true, []] | [false, PositionExtended[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
 type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
@@ -48,7 +49,7 @@ function digit_to_coord(digit: Digit): BoardCoord {
 }
 
 function create_error_collector() {
-    const errors: PositionExpanded[] = [];
+    const errors: PositionExtended[] = [];
     const unique = new Set<string>();
     const encode = ([r, c]: Position) => `${r},${c}`;
 
@@ -75,10 +76,16 @@ function create_error_collector() {
             errors.push([side, index]);
         },
 
-        add_direction(direction: Direction, index: BoardCoord) {
+        add_direction(direction: DirectionExtended, index: BoardCoord) {
             switch (direction) {
+                case "ROW_LEFT":
+                    this.add_side("left", index);
+                    break;
                 case "ROW":
                     this.add_side("right", index);
+                    break;
+                case "COL_TOP":
+                    this.add_side("top", index);
                     break;
                 case "COL":
                     this.add_side("bottom", index);
@@ -98,6 +105,19 @@ function generate_get_pos(direction: Direction, index: BoardCoord): (x: BoardCoo
             return (x: BoardCoord) => [index, x];
         case "COL":
             return (x: BoardCoord) => [x, index];
+    }
+}
+
+function generate_get_pos_extended(direction: DirectionExtended, index: BoardCoord): (x: BoardCoord) => Position {
+    switch (direction) {
+        case "ROW_LEFT":
+            return (x: BoardCoord) => [index, x];
+        case "ROW":
+            return (x: BoardCoord) => [index, (8 - x) as BoardCoord];
+        case "COL_TOP":
+            return (x: BoardCoord) => [x, index];
+        case "COL":
+            return (x: BoardCoord) => [(8 - x) as BoardCoord, index];
     }
 }
 
@@ -140,7 +160,7 @@ function generic_pair_check(
 
     const errors = create_error_collector();
 
-    for (const [r, c] of position_generator()){
+    for (const [r, c] of position_generator()) {
         const cell_data = solving_state.board[r][c];
         if (cell_data.number === null) continue;
 
@@ -326,6 +346,7 @@ const range_check: RuleCheckingFunction<RangeRule> = function (
             const value = solving_state.board[r][c].number;
             return value === null || value === target;
         }
+
         for (const one of one_pos) {
             const i1 = one - distance, i2 = one + distance;
             if (is_coord(i1) && can_be(get_pos(i1), 9)) continue;
@@ -788,6 +809,45 @@ const epsilon_check: PureCheckingFunction = function (solving_state: SolvingStat
     return errors.result();
 }
 
+const two_product = new Set([
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    12, 14, 15, 16, 18, 20, 21, 24, 25, 27,
+    28, 30, 32, 35, 36, 40, 42, 45, 48, 49,
+    54, 56, 63, 64, 72, 81,
+]);
+
+const product_check: RuleCheckingFunction<ProductRule> = function (
+    solving_state: SolvingState, rule: ProductRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [direction, index, number] of rule.render_state.side_hints) {
+        const get_pos = generate_get_pos_extended(direction, index);
+        let product = 1;
+        let count = 0;
+        const positions = ([0, 1, 2] as BoardCoord[]).map(get_pos);
+        for (const [r, c] of positions) {
+            const v = solving_state.board[r][c].number;
+            if (v === null) continue;
+            product *= v;
+            count++;
+        }
+
+        const q = Math.floor(number / product);
+        const r = number % product;
+
+        if (count === 3 && product === number) continue;
+        if (count === 2 && r === 0 && 1 <= q && q <= 9) continue;
+        if (count === 1 && r === 0 && two_product.has(q)) continue;
+        if (count === 0) continue;
+
+        errors.add_all(positions);
+        errors.add_direction(direction, index);
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -816,13 +876,14 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[PA]": (s, r) => pair_check(s, r as PairRule),
     "[IV]": (s, r) => inversion_check(s, r as InversionRule),
     "[TR]": (s, r) => trail_check(s, r as TrailRule),
+    "[PD]": (s, r) => product_check(s, r as ProductRule),
 } as const;
 
 export function check_all(
     solving_state: SolvingState, rules: Rule[]
-): [boolean, Partial<Record<RuleID, PositionExpanded[]>>] {
+): [boolean, Partial<Record<RuleID, PositionExtended[]>>] {
     let correct = true;
-    const errors: Partial<Record<RuleID, PositionExpanded[]>> = {};
+    const errors: Partial<Record<RuleID, PositionExtended[]>> = {};
 
     for (const rule of rules) {
         const id = rule.id;

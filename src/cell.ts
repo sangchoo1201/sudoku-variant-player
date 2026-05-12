@@ -3,7 +3,7 @@ import {
     type Digit,
     type Position,
     position_generator,
-    type PositionExpanded,
+    type PositionExtended,
     type Rule,
     type SolvingState
 } from "./schema.ts";
@@ -139,14 +139,26 @@ const encode = ([r, c]: Position) => r * 100 + c;
 const decode = (k: number) => [Math.floor(k / 100), k % 100] as Position;
 
 let cell_map: CellType[][];
+let left: HTMLDivElement[];
 let right: HTMLDivElement[];
+let top: HTMLDivElement[];
 let bottom: HTMLDivElement[];
 let solving_state: SolvingState;
 let rules: Rule[];
 
-export function init_all(map: CellType[][], r: HTMLDivElement[], b: HTMLDivElement[], state: SolvingState, rule: Rule[]) {
+export function init_all(
+    map: CellType[][],
+    l: HTMLDivElement[],
+    r: HTMLDivElement[],
+    t: HTMLDivElement[],
+    b: HTMLDivElement[],
+    state: SolvingState,
+    rule: Rule[]
+) {
     cell_map = map;
+    left = l;
     right = r;
+    top = t;
     bottom = b;
     solving_state = state;
     rules = rule;
@@ -409,16 +421,22 @@ export function clear_value() {
     if (changed) show_errors();
 }
 
-export function append_errors(error_positions: PositionExpanded[]) {
+export function append_errors(error_positions: PositionExtended[]) {
     for (const [a, b] of error_positions) {
+        if (a === 'left') {
+            left[b].classList.add('error');
+            continue;
+        }
         if (a === 'right') {
-            const side = right[b];
-            side.classList.add('error');
+            right[b].classList.add('error');
+            continue;
+        }
+        if (a === 'top') {
+            top[b].classList.add('error');
             continue;
         }
         if (a === 'bottom') {
-            const side = bottom[b];
-            side.classList.add('error');
+            bottom[b].classList.add('error');
             continue;
         }
         const cell = cell_map[a][b].cell;
@@ -434,7 +452,9 @@ export function show_errors() {
             const cell = cell_map[i][j].cell;
             cell.classList.remove('error');
         }
+        left[i].classList.remove('error');
         right[i].classList.remove('error');
+        top[i].classList.remove('error');
         bottom[i].classList.remove('error');
     }
 
