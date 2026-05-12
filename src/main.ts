@@ -1,6 +1,6 @@
 import { type SolvingState, type BoardState, type PuzzleData, PuzzleDataSchema } from "./schema.ts";
 import {render_all} from "./render.ts";
-import {setup_listeners} from "./input.ts";
+import {redirect_puzzle_id, setup_listeners} from "./input.ts";
 import {init_all} from "./cell.ts";
 import {trail_sat_init} from "./sat.ts";
 
@@ -187,26 +187,42 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
     return [cell_map, right, bottom];
 }
 
-const query_string = window.location.search;
-const url_params = new URLSearchParams(query_string);
-const code = url_params.get('code');
-const parsed_data = parse_data(code);
-const result = PuzzleDataSchema.safeParse(parsed_data);
-const puzzle_data: PuzzleData = result.success ? result.data : default_data;
-const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
-
-const [cell_map, right, bottom] = setup_grid(puzzle_data);
-init_all(cell_map, right, bottom, solving_state, puzzle_data.rules);
-render_all(puzzle_data.rules);
-setup_listeners(solving_state);
-for (const rule of puzzle_data.rules) {
-    if (rule.id === "[TR]") {
-        trail_sat_init(rule.render_state.start, rule.render_state.end);
+async function main() {
+    const query_string = window.location.search;
+    const url_params = new URLSearchParams(query_string);
+    const id = url_params.get('id');
+    if (id !== null) {
+        const match = id.match(/^#?(\d+)$/);
+        console.log();
+        if (match !== null) {
+            await redirect_puzzle_id(match[1]);
+            return;
+        }
     }
+    const code = url_params.get('code');
+    const parsed_data = parse_data(code);
+    const result = PuzzleDataSchema.safeParse(parsed_data);
+    if (!result.success) {
+        alert("invalid code or variant not updated");
+    }
+    const puzzle_data: PuzzleData = result.success ? result.data : default_data;
+    const solving_state: SolvingState = puzzle_data.solving_state || generate_default_solving_state(puzzle_data);
+
+    const [cell_map, right, bottom] = setup_grid(puzzle_data);
+    init_all(cell_map, right, bottom, solving_state, puzzle_data.rules);
+    render_all(puzzle_data.rules);
+    setup_listeners(solving_state);
+    for (const rule of puzzle_data.rules) {
+        if (rule.id === "[TR]") {
+            trail_sat_init(rule.render_state.start, rule.render_state.end);
+        }
+    }
+
+    document.title = `${puzzle_data.id} (sudoku-variant)`;
+    for (const button of document.querySelectorAll('button')) {
+        button.tabIndex = -1;
+    }
+    window.getSelection()?.selectAllChildren(document.body);
 }
 
-document.title = `${puzzle_data.id} (sudoku-variant)`;
-for (const button of document.querySelectorAll('button')) {
-    button.tabIndex = -1;
-}
-window.getSelection()?.selectAllChildren(document.body);
+await main();

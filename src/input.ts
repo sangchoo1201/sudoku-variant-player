@@ -34,6 +34,16 @@ const modifiers = {
     alt: false,
 };
 
+export async function redirect_puzzle_id(puzzle_id: string) {
+    const response = await fetch(`https://puzzle-id.sangchoo1201.workers.dev/get/${puzzle_id}`)
+    const body = await response.text();
+    if (!response.ok) {
+        alert(`puzzle id #${puzzle_id} not found`);
+        return;
+    }
+    location.href = `?code=${body}`;
+}
+
 function config_input_mode() {
     set_input_mode(null);
     if (modifiers.shift) set_input_mode(InputMode.Corner);
@@ -84,11 +94,16 @@ export function setup_listeners(
     };
 
     const button_load_text = document.querySelector<HTMLButtonElement>('#button-load-text')!;
-    button_load_text.addEventListener('click', () => {
-        const text = prompt("Enter base64 code");
+    button_load_text.addEventListener('click', async () => {
+        const text = prompt("Enter base64 code or puzzle id");
         if (!text) return;
 
-        location.href = `?code=${text}`;
+        const match = text.match(/^#?(\d+)$/);
+        if (match !== null) {
+            await redirect_puzzle_id(match[1]);
+        } else {
+            location.href = `?code=${text}`;
+        }
     });
 
     const button_copy_board = document.querySelector<HTMLButtonElement>('#button-copy-board')!;
