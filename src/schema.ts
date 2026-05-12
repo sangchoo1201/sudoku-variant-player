@@ -73,19 +73,19 @@ const CellStateSchema = z.discriminatedUnion("fixed", [
     EmptyCellStateSchema,
 ]);
 
-const BoardChangeSchema = z.array(
-    z.object({
-        pos: PositionSchema,
-        before: EmptyCellStateSchema,
-        after: EmptyCellStateSchema,
-    })
-);
-
 const BoardStateSchema = z.array(
     z.array(CellStateSchema).length(9)
 ).length(9);
 
 export type BoardState = z.infer<typeof BoardStateSchema>;
+
+const BoardChangeSchema = z.array(
+    z.object({
+        pos: PositionSchema,
+        before: CellStateSchema,
+        after: CellStateSchema,
+    })
+);
 
 export const SolvingStateSchema = z.object({
     board: BoardStateSchema,
@@ -94,6 +94,43 @@ export const SolvingStateSchema = z.object({
 });
 
 export type SolvingState = z.infer<typeof SolvingStateSchema>;
+
+const CompressedFixedCellStateSchema = z.tuple([
+    DigitSchema,
+    z.string(),
+]);
+
+const CompressedEmptyCellStateSchema = z.tuple([
+    z.union([DigitSchema, z.literal(0)]),
+    z.string(),
+    z.string(),
+    z.string(),
+]);
+
+const CompressedCellStateSchema = z.union([
+    CompressedFixedCellStateSchema,
+    CompressedEmptyCellStateSchema,
+]);
+
+const CompressedBoardStateSchema = z.array(
+    z.array(CompressedCellStateSchema).length(9)
+).length(9);
+
+const CompressedBoardChangeSchema = z.array(
+    z.tuple([
+        PositionSchema,
+        CompressedCellStateSchema,
+        CompressedCellStateSchema,
+    ])
+);
+
+export const CompressedSolvingStateSchema = z.tuple([
+    CompressedBoardStateSchema,
+    z.array(CompressedBoardChangeSchema),
+    z.array(CompressedBoardChangeSchema),
+]);
+
+export type CompressedSolvingState = z.infer<typeof CompressedSolvingStateSchema>;
 
 const SudokuRuleSchema = z.object({
     id: z.literal("[Sudoku]"),

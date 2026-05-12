@@ -3,12 +3,13 @@ import {
     type BoardState,
     type PuzzleData,
     PuzzleDataSchema,
-    type DirectionExtended, SolvingStateSchema
+    type DirectionExtended,
 } from "./schema.ts";
 import {render_all} from "./render.ts";
 import {redirect_puzzle_id, setup_listeners} from "./input.ts";
 import {init_all, modify_all} from "./cell.ts";
 import {trail_sat_init} from "./sat.ts";
+import {load_state} from "./storage.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
@@ -280,15 +281,8 @@ async function main() {
     if (puzzle_data.solving_state !== undefined) {
         solving_state = puzzle_data.solving_state;
     } else {
-        solving_state = generate_default_solving_state(puzzle_data);
-        const key = `sudoku_variant_${puzzle_data.id}`;
-        const data = localStorage.getItem(key);
-        if (data !== null) {
-            const result = SolvingStateSchema.safeParse(JSON.parse(data));
-            if (result.success) {
-                solving_state = result.data;
-            }
-        }
+        const state = load_state(puzzle_data.id)
+        solving_state = state ?? generate_default_solving_state(puzzle_data);
     }
 
     const [cell_map, left, right, top, bottom] = setup_grid(puzzle_data);

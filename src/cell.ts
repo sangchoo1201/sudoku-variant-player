@@ -8,6 +8,7 @@ import {
     type SolvingState
 } from "./schema.ts";
 import {check_all} from "./rule.ts";
+import {save_state} from "./storage.ts";
 
 export const InputMode = {
     Normal: "normal",
@@ -405,7 +406,7 @@ export function apply_value(value: string) {
     });
 
     if (digit_changed) show_errors();
-    save_state();
+    save_state(puzzle_id, solving_state);
 }
 
 export function clear_value() {
@@ -443,12 +444,7 @@ export function clear_value() {
     });
 
     if (digit_changed) show_errors();
-    save_state();
-}
-
-function save_state() {
-    const key = `sudoku_variant_${puzzle_id}`;
-    localStorage.setItem(key, JSON.stringify(solving_state));
+    save_state(puzzle_id, solving_state);
 }
 
 export function append_errors(error_positions: PositionExtended[]) {
