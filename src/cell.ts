@@ -364,7 +364,7 @@ function corner_modify([r, c]: Position, modify: ModifyType): SingleMemoChange |
     if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return null;
 
     const change = set_modify([r, c], cell_state.corner, modify);
-    if (change === null) return null;
+    if (change === null && modify.type !== "nothing") return null;
 
     const sorted_keys = Object.keys(cell_state.corner).sort();
     for (let i = 0; i < 8; i++) {
@@ -384,7 +384,7 @@ function center_modify([r, c]: Position, modify: ModifyType): SingleMemoChange |
     if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return null;
 
     const change = set_modify([r, c], cell_state.center, modify);
-    if (change === null) return null;
+    if (change === null && modify.type !== "nothing") return null;
 
     const sorted_keys = Object.keys(cell_state.center).sort();
     cell_element.center.textContent = sorted_keys.join('').slice(0, 8);
@@ -396,7 +396,7 @@ function color_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | 
     const cell_state = solving_state.board[r][c];
 
     const change = set_modify([r, c], cell_state.color, modify);
-    if (change === null) return null;
+    if (change === null && modify.type !== "nothing") return null;
 
     const sorted_keys = Object.keys(cell_state.color).map(Number).sort();
     cell_element.color.replaceChildren();
