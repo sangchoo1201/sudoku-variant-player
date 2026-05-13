@@ -154,6 +154,12 @@ export function setup_listeners(
 
         // shortcuts
         if (!input_alphabet) {
+            if (modifiers.control && code === 'KeyZ') {
+                e.preventDefault();
+                (modifiers.shift ? redo : undo)();
+                return;
+            }
+
             if (modifiers.control && code === 'KeyA') {
                 e.preventDefault();
                 for (const [r, c] of position_generator()) {
