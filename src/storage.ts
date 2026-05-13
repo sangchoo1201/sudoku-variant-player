@@ -1,4 +1,5 @@
 import {
+    type BoardChange, type CompressedBoardChange,
     type CompressedSolvingState,
     CompressedSolvingStateSchema,
     type SolvingState,
@@ -19,6 +20,58 @@ function string_to_set(str: string): Record<string, true> {
         set[char] = true;
     }
     return set;
+}
+
+const memo_to_number = {
+    "corner": 1,
+    "center": 2,
+    "color": 3,
+} as const;
+
+function compress_board_change(changes: BoardChange): CompressedBoardChange {
+    if (changes.type === "normal") {
+        return [0, changes.change.map(change => [
+            change.pos[0],
+            change.pos[1],
+            change.before ?? 0,
+            change.after ?? 0,
+        ])];
+    } else {
+        return [memo_to_number[changes.type], changes.change.map(change => [
+            change.pos[0],
+            change.pos[1],
+            set_to_string(change.before),
+            set_to_string(change.after),
+        ])];
+    }
+}
+
+const number_to_memo = {
+    1: "corner",
+    2: "center",
+    3: "color",
+} as const;
+
+function extract_board_change(changes: CompressedBoardChange): BoardChange {
+    if (changes[0] === 0) {
+        return {
+            type: "normal",
+            change: changes[1].map(change => ({
+                pos: [change[0], change[1]],
+                before: change[2] === 0 ? null : change[2],
+                after: change[3] === 0 ? null : change[3],
+            })),
+        };
+    } else {
+        return {
+            type: number_to_memo[changes[0]],
+            change: changes[1].map(change => ({
+                pos: [change[0], change[1]],
+                before: string_to_set(change[2]),
+                after: string_to_set(change[3]),
+            })),
+        };
+    }
 }
 
 export function save_state(puzzle_id: string, solving_state: SolvingState) {

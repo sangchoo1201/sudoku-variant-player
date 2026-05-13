@@ -79,13 +79,38 @@ const BoardStateSchema = z.array(
 
 export type BoardState = z.infer<typeof BoardStateSchema>;
 
-const BoardChangeSchema = z.array(
-    z.object({
-        pos: PositionSchema,
-        before: CellStateSchema,
-        after: CellStateSchema,
-    })
-);
+const SingleNumberChangeSchema = z.object({
+    pos: PositionSchema,
+    before: DigitSchema.nullable(),
+    after: DigitSchema.nullable(),
+});
+
+export type SingleNumberChange = z.infer<typeof SingleNumberChangeSchema>;
+
+const NumberChangeSchema = z.object({
+    type: z.literal("normal"),
+    change: z.array(SingleNumberChangeSchema),
+});
+
+const SingleMemoChangeSchema = z.object({
+    pos: PositionSchema,
+    before: z.record(z.string(), z.literal(true)),
+    after: z.record(z.string(), z.literal(true)),
+});
+
+export type SingleMemoChange = z.infer<typeof SingleMemoChangeSchema>;
+
+const MemoChangeSchema = z.object({
+    type: z.enum(["corner", "center", "color"]),
+    change: z.array(SingleMemoChangeSchema),
+});
+
+const BoardChangeSchema = z.discriminatedUnion("type", [
+    NumberChangeSchema,
+    MemoChangeSchema,
+]);
+
+export type BoardChange = z.infer<typeof BoardChangeSchema>;
 
 export const SolvingStateSchema = z.object({
     board: BoardStateSchema,
@@ -116,13 +141,36 @@ const CompressedBoardStateSchema = z.array(
     z.array(CompressedCellStateSchema).length(9)
 ).length(9);
 
-const CompressedBoardChangeSchema = z.array(
-    z.tuple([
-        PositionSchema,
-        CompressedCellStateSchema,
-        CompressedCellStateSchema,
-    ])
-);
+const CompressedSingleNumberChangeSchema = z.tuple([
+    BoardCoordSchema,
+    BoardCoordSchema,
+    z.union([DigitSchema, z.literal(0)]),
+    z.union([DigitSchema, z.literal(0)]),
+]);
+
+const CompressedNumberChangeSchema = z.tuple([
+    z.literal(0),
+    z.array(CompressedSingleNumberChangeSchema),
+]);
+
+const CompressedSingleMemoChangeSchema = z.tuple([
+    BoardCoordSchema,
+    BoardCoordSchema,
+    z.string(),
+    z.string(),
+]);
+
+const CompressedMemoChangeSchema = z.tuple([
+    z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    z.array(CompressedSingleMemoChangeSchema),
+]);
+
+const CompressedBoardChangeSchema = z.union([
+    CompressedNumberChangeSchema,
+    CompressedMemoChangeSchema,
+]);
+
+export type CompressedBoardChange = z.infer<typeof CompressedBoardChangeSchema>;
 
 export const CompressedSolvingStateSchema = z.tuple([
     CompressedBoardStateSchema,

@@ -5,7 +5,7 @@ import {
     InputMode, type InputMode as InputModeType, is_selected,
     remove_selection, reset_selection, selection_to_text,
     set_input_alphabet, set_input_mode, set_last_cell, set_default_input_mode,
-    show_current_input_mode, open_info, close_info,
+    show_current_input_mode, open_info, close_info, undo, redo,
 } from "./cell.ts";
 
 const DragMode = {
@@ -63,20 +63,20 @@ export function setup_listeners(
         [InputMode.Color, 'button-color'],
     ] as [InputModeType, string][]) {
         const button = document.querySelector<HTMLButtonElement>(`#${button_id}`)!;
-        button.addEventListener('pointerdown', () => {
+        button.addEventListener('click', () => {
             set_default_input_mode(input_mode);
         });
     }
 
     for (let i = 0; i <= 9; i++) {
         const button = document.querySelector<HTMLButtonElement>(`#button-${i}`)!;
-        button.addEventListener('pointerdown', () => {
+        button.addEventListener('click', () => {
             apply_value(i.toString());
         });
     }
 
     const button_delete = document.querySelector<HTMLButtonElement>('#button-delete')!;
-    button_delete.addEventListener('pointerdown', () => {
+    button_delete.addEventListener('click', () => {
         clear_value();
     });
 
@@ -109,6 +109,12 @@ export function setup_listeners(
 
     const button_close_info = document.querySelector<HTMLButtonElement>('#button-close-info')!;
     button_close_info.addEventListener('click', close_info);
+
+    const button_undo = document.querySelector<HTMLButtonElement>('#button-undo')!;
+    button_undo.addEventListener('click', undo);
+
+    const button_redo = document.querySelector<HTMLButtonElement>('#button-redo')!;
+    button_redo.addEventListener('click', redo);
 
     function move_selection(code: string) {
         const last_cell = get_last_cell();

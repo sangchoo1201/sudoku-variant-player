@@ -7,7 +7,7 @@ import {
 } from "./schema.ts";
 import {render_all} from "./render.ts";
 import {redirect_puzzle_id, setup_listeners} from "./input.ts";
-import {init_all, modify_all, open_info} from "./cell.ts";
+import {init_all, update_all, open_info} from "./cell.ts";
 import {trail_sat_init} from "./sat.ts";
 import {load_state} from "./storage.ts";
 
@@ -352,7 +352,7 @@ async function main() {
             trail_sat_init(rule.render_state.start, rule.render_state.end);
         }
     }
-    modify_all();
+    update_all();
 
     document.title = `${puzzle_data.id} (sudoku-variant)`;
     for (const button of document.querySelectorAll('button')) {

@@ -1,10 +1,11 @@
 import type {CellType} from "./main.ts";
 import {
+    type BoardChange,
     type Digit,
     type Position,
     position_generator,
     type PositionExtended,
-    type Rule,
+    type Rule, type SingleMemoChange, type SingleNumberChange,
     type SolvingState
 } from "./schema.ts";
 import {check_all} from "./rule.ts";
@@ -36,26 +37,17 @@ type ModifyType =
     { type: "add", value: string } |
     { type: "remove", value: string } |
     { type: "reset" } |
-    { type: "nothing" };
+    { type: "nothing" } |
+    { type: "overwrite_number", value: Digit | null } |
+    { type: "overwrite_memo", value: Record<string, true>};
 
 const Modify = {
-    add: (value: string): ModifyType => ({
-        type: 'add',
-        value,
-    }),
-
-    remove: (value: string): ModifyType => ({
-        type: 'remove',
-        value,
-    }),
-
-    reset: (): ModifyType => ({
-        type: 'reset',
-    }),
-
-    nothing: (): ModifyType => ({
-        type: 'nothing',
-    }),
+    add: (value: string): ModifyType => ({ type: 'add', value }),
+    remove: (value: string): ModifyType => ({ type: 'remove', value }),
+    reset: (): ModifyType => ({ type: 'reset' }),
+    nothing: (): ModifyType => ({ type: 'nothing' }),
+    overwrite_number: (value: Digit | null): ModifyType => ({ type: 'overwrite_number', value }),
+    overwrite_memo: (value: Record<string, true>): ModifyType => ({ type: 'overwrite_memo', value }),
 };
 
 const color_map: string[] = [
@@ -304,29 +296,39 @@ function is_common(value: string) {
     return true;
 }
 
-function normal_modify([r, c]: Position, modify: ModifyType) {
+function normal_modify([r, c]: Position, modify: ModifyType): SingleNumberChange | null {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed) return false;
+    if (cell_state.fixed) return null;
 
+    const before = cell_state.number;
     if (modify.type === "add") {
         cell_state.number = Number(modify.value) as Digit;
-        cell_element.normal.textContent = modify.value;
-        cell_element.cell.classList.add('filled');
-    } else if (modify.type === "nothing") {
-        cell_element.normal.textContent = cell_state.number?.toString() ?? '';
-        if (cell_state.number) {
-            cell_element.cell.classList.add('filled');
-        }
-    } else {
+    } else if (modify.type === "remove" || modify.type === "reset") {
         cell_state.number = null;
-        cell_element.normal.textContent = '';
+    } else if (modify.type === "overwrite_number") {
+        cell_state.number = modify.value;
+    }
+    const after = cell_state.number;
+
+    cell_element.normal.textContent = cell_state.number?.toString() ?? '';
+    if (cell_state.number) {
+        cell_element.cell.classList.add('filled');
+    } else {
         cell_element.cell.classList.remove('filled');
     }
-    return true;
+
+    return before === after ? null : { pos: [r, c], before, after };
 }
 
-function set_modify(set: Record<string, true>, modify: ModifyType) {
+function equal_set(s1: Record<string, true>, s2: Record<string, true>): boolean {
+    const k1 = Object.keys(s1);
+    if (k1.length !== Object.keys(s2).length) return false;
+    return k1.every(x => Object.hasOwn(s2, x));
+}
+
+function set_modify(pos: Position, set: Record<string, true>, modify: ModifyType): SingleMemoChange | null {
+    const before = { ...set };
     switch (modify.type) {
         case "add":
             set[modify.value] = true;
@@ -341,15 +343,28 @@ function set_modify(set: Record<string, true>, modify: ModifyType) {
                 delete set[key];
             }
             break;
+
+        case "overwrite_memo":
+            for (const key in set) {
+                delete set[key];
+            }
+            for (const key in modify.value) {
+                set[key] = true;
+            }
+            break;
     }
+    const after = { ...set };
+    return equal_set(before, after) ? null : { pos, before, after };
 }
 
-function corner_modify([r, c]: Position, modify: ModifyType) {
+function corner_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | null {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed || cell_state.number !== null && modify.type !== "nothing") return;
+    if (cell_state.fixed) return null;
+    if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return null;
 
-    set_modify(cell_state.corner, modify);
+    const change = set_modify([r, c], cell_state.corner, modify);
+    if (change === null) return null;
 
     const sorted_keys = Object.keys(cell_state.corner).sort();
     for (let i = 0; i < 8; i++) {
@@ -359,24 +374,29 @@ function corner_modify([r, c]: Position, modify: ModifyType) {
             cell_element.corner[i].textContent = '';
         }
     }
+    return change;
 }
 
-function center_modify([r, c]: Position, modify: ModifyType) {
+function center_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | null {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed || cell_state.number !== null && modify.type !== "nothing") return;
+    if (cell_state.fixed) return null;
+    if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return null;
 
-    set_modify(cell_state.center, modify);
+    const change = set_modify([r, c], cell_state.center, modify);
+    if (change === null) return null;
 
     const sorted_keys = Object.keys(cell_state.center).sort();
     cell_element.center.textContent = sorted_keys.join('').slice(0, 8);
+    return change;
 }
 
-function color_modify([r, c]: Position, modify: ModifyType) {
+function color_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | null {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
 
-    set_modify(cell_state.color, modify);
+    const change = set_modify([r, c], cell_state.color, modify);
+    if (change === null) return null;
 
     const sorted_keys = Object.keys(cell_state.color).map(Number).sort();
     cell_element.color.replaceChildren();
@@ -384,21 +404,38 @@ function color_modify([r, c]: Position, modify: ModifyType) {
     for (const polygon of polygons) {
         cell_element.color.appendChild(polygon);
     }
+    return change;
 }
 
-const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => boolean> = {
+type SingleChange = SingleNumberChange | SingleMemoChange | null;
+
+const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => SingleChange> = {
     [InputMode.Normal]: normal_modify,
-    [InputMode.Corner]: (p, m) => { corner_modify(p, m); return false; },
-    [InputMode.Center]: (p, m) => { center_modify(p, m); return false; },
-    [InputMode.Color]: (p, m) => { color_modify(p, m); return false; },
+    [InputMode.Corner]: corner_modify,
+    [InputMode.Center]: center_modify,
+    [InputMode.Color]: color_modify,
 } as const;
 
-export function modify_all() {
+export function update_all() {
     for (const p of position_generator()) {
         for (const f of Object.values(modify_functions)) {
             f(p, Modify.nothing());
         }
     }
+}
+
+function update_board(changes: BoardChange) {
+    if (changes.change.length === 0) return;
+
+    if (changes.type === InputMode.Normal) {
+        show_errors();
+    }
+    solving_state.undo.push(changes);
+    if (solving_state.undo.length > 200) {
+        solving_state.undo.shift();
+    }
+    solving_state.redo = [];
+    save_state(puzzle_id, solving_state);
 }
 
 export function apply_value(value: string) {
@@ -409,14 +446,13 @@ export function apply_value(value: string) {
     if ((mode === InputMode.Color || !alphabet) && !('0' <= value && value <= '9')) return;
 
     const add = !is_common(value);
-    let digit_changed = false;
+    const changes: SingleChange[] = [];
     selected.forEach(k => {
         const result = modify_functions[mode](decode(k), (add ? Modify.add : Modify.remove)(value));
-        if (result) digit_changed = true;
+        if (result !== null) changes.push(result);
     });
 
-    if (digit_changed) show_errors();
-    save_state(puzzle_id, solving_state);
+    update_board({ type: mode, change: changes } as BoardChange);
 }
 
 export function clear_value() {
@@ -447,14 +483,13 @@ export function clear_value() {
     if (has_mode[input_mode]) mode = input_mode;
     if (mode === null) return;
 
-    let digit_changed = false;
+    const changes: SingleChange[] = [];
     selected.forEach(k => {
         const result = modify_functions[mode](decode(k), Modify.reset());
-        if (result) digit_changed = true;
+        if (result !== null) changes.push(result);
     });
 
-    if (digit_changed) show_errors();
-    save_state(puzzle_id, solving_state);
+    update_board({ type: mode, change: changes } as BoardChange);
 }
 
 export function append_errors(error_positions: PositionExtended[]) {
@@ -515,4 +550,42 @@ export function selection_to_text(select_all: boolean = false): string {
         texts[r].push((solving_state.board[r][c].number ?? 0).toString());
     }
     return texts.slice(mn_row, mx_row + 1).map(s => s.slice(mn_col, mx_col + 1).join("")).join("\n");
+}
+
+export function undo() {
+    const action = solving_state.undo.pop();
+    if (action === undefined) return;
+    solving_state.redo.push(action);
+
+    const modify_function = modify_functions[action.type];
+    if (action.type === "normal") {
+        for (const change of action.change) {
+            modify_function(change.pos, Modify.overwrite_number(change.before));
+        }
+        show_errors();
+    } else {
+        for (const change of action.change) {
+            modify_function(change.pos, Modify.overwrite_memo(change.before));
+        }
+    }
+    save_state(puzzle_id, solving_state);
+}
+
+export function redo() {
+    const action = solving_state.redo.pop();
+    if (action === undefined) return;
+    solving_state.undo.push(action);
+
+    const modify_function = modify_functions[action.type];
+    if (action.type === "normal") {
+        for (const change of action.change) {
+            modify_function(change.pos, Modify.overwrite_number(change.after));
+        }
+        show_errors();
+    } else {
+        for (const change of action.change) {
+            modify_function(change.pos, Modify.overwrite_memo(change.after));
+        }
+    }
+    save_state(puzzle_id, solving_state);
 }
