@@ -308,7 +308,7 @@ const triangle_rotation = (x: number, y: number, r3: number = 3 ** 0.5): [number
 const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: PointRule) {
     for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
-        const d = 0.11;
+        const d = 0.12;
 
         const points = triangle_rotation((c2 - c1) * d, (r2 - r1) * d)
             .map(([x, y]): [number, number] => [x + cx, y + cy]);
@@ -438,12 +438,15 @@ const pair_render: Renderer<PairRule> = function (ctx: RenderContext, rule: Pair
 
 const trail_render: Renderer<TrailRule> = function (ctx: RenderContext, rule: TrailRule) {
     for (const [pos, color] of [
-        [rule.render_state.start, "rgba(0, 127, 255, 0.4)"],
-        [rule.render_state.end, "rgba(255, 127, 0, 0.4)"]
+        [rule.render_state.start, "rgb(0, 127, 255)"],
+        [rule.render_state.end, "rgb(255, 127, 0)"]
     ] as [Position, string][]) {
         const circle = generate_circle(pos);
-        circle.setAttribute("r", "0.4");
+        circle.setAttribute("r", "0.33");
+        circle.setAttribute("stroke", color);
+        circle.setAttribute("stroke-width", "0.04");
         circle.setAttribute("fill", color);
+        circle.setAttribute("fill-opacity", "0.4");
         ctx.layer_bottom.appendChild(circle);
     }
 }
