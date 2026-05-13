@@ -357,6 +357,15 @@ button.selected-mode {
     border-radius: 12px;
 }
 
+
+#info-text {
+    font-size: min(2.2cqw, 1.8cqh);
+}
+
+#info-content > a {
+    font-size: 2cqw;
+}
+
 #button-close-info {
     font-size: 2cqw;
     width: 20%;
