@@ -48,6 +48,10 @@ function digit_to_coord(digit: Digit): BoardCoord {
     return digit - 1 as BoardCoord;
 }
 
+function is_digit(n: number): n is Digit {
+    return Number.isInteger(n) && 1 <= n && n <= 9;
+}
+
 function create_error_collector() {
     const errors: PositionExtended[] = [];
     const unique = new Set<string>();
@@ -848,6 +852,54 @@ const product_check: RuleCheckingFunction<ProductRule> = function (
     return errors.result();
 }
 
+const bumper_check: PureCheckingFunction = function (solving_state: SolvingState): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const bumper: (boolean | null)[][] = Array.from( {length: 9}, _ => Array(9).fill(null) );
+    for (const [r, c] of position_generator()) {
+        const v = solving_state.board[r][c].number;
+        let possible = v === null ? new Set<Digit>(digits) : new Set<Digit>([v]);
+        let filled_count = 0;
+        const neighbors = adjacent.map(([dr, dc]) => [r + dr, c + dc] as [number, number]).filter(is_pos);
+        for (const [nr, nc] of neighbors) {
+            const nv = solving_state.board[nr][nc].number;
+            if (nv === null) continue;
+            filled_count++;
+            for (let i = nv - 2; i <= nv + 2; i++) {
+                if (is_digit(i)) possible.delete(i);
+            }
+        }
+        if (v !== null && filled_count === neighbors.length) {
+            bumper[r][c] = possible.size > 0;
+        } else {
+            bumper[r][c] = possible.size > 0 ? null : false;
+        }
+    }
+
+    for (const direction of ["ROW", "COL"] as const) {
+        for (const index of board_coords) {
+            const get_pos = generate_get_pos(direction, index);
+            const bumper_pos: Position[] = [];
+            let possible_count = 0;
+            for (const i of board_coords) {
+                const [r, c] = get_pos(i);
+                const b = bumper[r][c];
+                if (b === true) bumper_pos.push([r, c]);
+                if (b !== false) possible_count += 1;
+            }
+
+            if (bumper_pos.length > 1) {
+                errors.add_all(bumper_pos);
+            }
+            if (possible_count < 1) {
+                errors.add_all(board_coords.map(get_pos));
+            }
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -858,6 +910,7 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[ES]": escape_check,
     "[TP]": triplet_check,
     "[EP]": epsilon_check,
+    "[BP]": bumper_check,
     "[SG]": (s, r) => segment_check(s, r as SegmentRule),
     "[LK]": (s, r) => link_check(s, r as LinkRule),
     "[LO]": (s, r) => lotus_check(s, r as LotusRule),

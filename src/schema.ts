@@ -397,6 +397,10 @@ const ProductRuleSchema = z.object({
 
 export type ProductRule = z.infer<typeof ProductRuleSchema>;
 
+const BumperRuleSchema = z.object({
+    id: z.literal("[BP]"),
+});
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -431,6 +435,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     TripletRuleSchema,
     EpsilonRuleSchema,
     ProductRuleSchema,
+    BumperRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

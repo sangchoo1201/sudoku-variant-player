@@ -533,6 +533,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[ES]": nothing_render,
     "[TP]": nothing_render,
     "[EP]": nothing_render,
+    "[BP]": nothing_render,
     "[SG]": (ctx, r) => segment_render(ctx, r as SegmentRule),
     "[LK]": (ctx, r) => link_render(ctx, r as LinkRule),
     "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
