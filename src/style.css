@@ -237,9 +237,7 @@ html, body, #app {
     justify-content: center;
 }
 
-#utility-pad > button {
-    aspect-ratio: 1;
-
+button {
     position: relative;
     align-items: center;
     justify-content: center;
@@ -248,6 +246,14 @@ html, body, #app {
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+}
+
+#digit-pad > button {
+    aspect-ratio: 1;
+}
+
+#utility-pad > button {
+    aspect-ratio: 1;
 }
 
 .button-color {
