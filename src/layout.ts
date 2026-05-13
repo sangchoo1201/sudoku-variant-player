@@ -9,10 +9,10 @@ const resize = () => {
     let board_size = 0;
     let controls_width = 0, controls_height = 0;
     if (window.matchMedia("(orientation: landscape)").matches) {
-        board_size = Math.min(width * 0.6, height);
+        board_size = Math.min(width * 2 / 3, height);
 
-        const ratio = 1 / 1.5;
-        controls_width = Math.min(width * 0.4, height * ratio);
+        const ratio = 1 / 2;
+        controls_width = Math.min(width / 3, height * ratio);
         controls_height = controls_width / ratio;
     }
     if (window.matchMedia("(orientation: portrait)").matches) {

@@ -237,7 +237,7 @@ html, body, #app {
     justify-content: center;
 }
 
-button {
+#utility-pad > button {
     aspect-ratio: 1;
 
     position: relative;
@@ -310,6 +310,52 @@ button.selected-mode {
     #utility-pad {
         flex-direction: row;
     }
+}
+
+.modal {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.show-modal {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.2s;
+}
+
+#info-modal {
+    position: fixed;
+    inset: 0;
+}
+
+#info-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+#info-content {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+
+    left: 50%;
+    top: 50%;
+
+    transform: translate(-50%, -50%);
+
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+#button-close-info {
+    font-size: 2cqw;
+    width: 20%;
+
+    align-self: center;
 }
 
 /* TEST */

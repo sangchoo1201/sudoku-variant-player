@@ -135,6 +135,8 @@ const mode_buttons: Record<InputMode, HTMLButtonElement> = {
     [InputMode.Color]: document.querySelector<HTMLButtonElement>("#button-color")!,
 };
 
+const modal = document.getElementById('info-modal')!;
+
 let last_cell: HTMLDivElement | null = null;
 let default_input_mode: InputMode = InputMode.Normal;
 let input_mode: InputMode | null = null;
@@ -173,6 +175,14 @@ export function init_all(
     puzzle_id = id;
 
     show_errors();
+}
+
+export function open_info(): void {
+    modal.classList.add('show-modal');
+}
+
+export function close_info(): void {
+    modal.classList.remove('show-modal');
 }
 
 export function show_current_input_mode() {

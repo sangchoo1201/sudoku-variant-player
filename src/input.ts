@@ -5,7 +5,7 @@ import {
     InputMode, type InputMode as InputModeType, is_selected,
     remove_selection, reset_selection, selection_to_text,
     set_input_alphabet, set_input_mode, set_last_cell, set_default_input_mode,
-    show_current_input_mode,
+    show_current_input_mode, open_info, close_info,
 } from "./cell.ts";
 
 const DragMode = {
@@ -104,6 +104,12 @@ export function setup_listeners(
         alert("Board data copied!");
     });
 
+    const button_open_info = document.querySelector<HTMLButtonElement>('#button-open-info')!;
+    button_open_info.addEventListener('click', open_info);
+
+    const button_close_info = document.querySelector<HTMLButtonElement>('#button-close-info')!;
+    button_close_info.addEventListener('click', close_info);
+
     function move_selection(code: string) {
         const last_cell = get_last_cell();
         const direction = direction_map[code];
@@ -134,6 +140,11 @@ export function setup_listeners(
         if (modifiers.alt) set_input_alphabet(true);
 
         const input_alphabet = get_input_alphabet();
+
+        if (code === 'Escape') {
+            close_info();
+            return;
+        }
 
         // shortcuts
         if (!input_alphabet) {
@@ -222,6 +233,13 @@ export function setup_listeners(
     window.addEventListener('pointerdown', (e) => {
         if (active_pointer_id !== null) return;
         active_pointer_id = e.pointerId;
+
+        const modal = (e.target as HTMLElement).closest('#info-modal');
+        if (modal) {
+            const content = (e.target as HTMLElement).closest('#info-content');
+            if (!content) close_info();
+            return;
+        }
 
         const controls = (e.target as HTMLElement).closest('#controls');
         if (controls) return;
