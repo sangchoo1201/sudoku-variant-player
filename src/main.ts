@@ -337,7 +337,7 @@ async function main() {
             solving_state = state;
         } else {
             solving_state = generate_default_solving_state(puzzle_data);
-            open_info();
+            if (puzzle_data.id !== "#00000") open_info();
         }
     }
 
