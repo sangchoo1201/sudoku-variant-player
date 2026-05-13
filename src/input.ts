@@ -80,20 +80,6 @@ export function setup_listeners(
         clear_value();
     });
 
-    const button_load_file = document.querySelector<HTMLButtonElement>('#button-load-file')!;
-    const file_input = document.querySelector<HTMLInputElement>('#file-input')!;
-    button_load_file.addEventListener('click', () => {
-        file_input.click();
-    });
-
-    file_input.onchange = async () => {
-        const file = file_input.files?.[0];
-        if (!file) return;
-
-        const text = await file.text();
-        location.href = `?code=${text}`;
-    };
-
     const button_load_text = document.querySelector<HTMLButtonElement>('#button-load-text')!;
     button_load_text.addEventListener('click', async () => {
         const text = prompt("Enter base64 code or puzzle id");
