@@ -488,7 +488,7 @@ export function clear_value() {
         selected.forEach(k => {
             const [r, c] = decode(k);
             const cell = solving_state.board[r][c];
-            if (cell.fixed) return;
+            if (cell.fixed && mode !== "color") return;
             const set = { ...cell[mode] };
             const result = memo_modify[mode]([r, c], Modify.reset());
             if (result) before.push({ pos: [r, c], memo: set });
