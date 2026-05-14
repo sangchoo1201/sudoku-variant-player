@@ -1,10 +1,10 @@
 import {type BoardCoord, type Position, position_generator, type SolvingState} from "./schema.ts";
 import {
     add_selection, apply_value, clear_value, cycle_default_input_mode,
-    get_input_alphabet, get_last_cell, get_single_selection_or_null,
+    get_last_cell, get_single_selection_or_null,
     InputMode, type InputMode as InputModeType, is_selected,
     remove_selection, reset_selection, selection_to_text,
-    set_input_alphabet, set_input_mode, set_last_cell, set_default_input_mode,
+    set_input_mode, set_last_cell, set_default_input_mode,
     show_current_input_mode, open_info, close_info, undo, redo,
 } from "./cell.ts";
 
@@ -142,10 +142,6 @@ export function setup_listeners(
         if (code === 'AltLeft' || code === 'AltRight') modifiers.alt = true;
 
         config_input_mode();
-        set_input_alphabet(null);
-        if (modifiers.alt) set_input_alphabet(true);
-
-        const input_alphabet = get_input_alphabet();
 
         if (code === 'Escape') {
             close_info();
@@ -153,38 +149,36 @@ export function setup_listeners(
         }
 
         // shortcuts
-        if (!input_alphabet) {
-            if (modifiers.control && code === 'KeyZ') {
-                e.preventDefault();
-                (modifiers.shift ? redo : undo)();
+        if (modifiers.control && code === 'KeyZ') {
+            e.preventDefault();
+            (modifiers.shift ? redo : undo)();
+            return;
+        }
+
+        if (modifiers.control && code === 'KeyA') {
+            e.preventDefault();
+            for (const [r, c] of position_generator()) {
+                add_selection([r, c], false);
+            }
+            return;
+        }
+
+        for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD'] as const) {
+            if (code === key) {
+                move_selection(code);
                 return;
             }
+        }
 
-            if (modifiers.control && code === 'KeyA') {
-                e.preventDefault();
-                for (const [r, c] of position_generator()) {
-                    add_selection([r, c], false);
-                }
+        for (const [key, mode] of [
+            ['KeyZ', InputMode.Normal],
+            ['KeyX', InputMode.Corner],
+            ['KeyC', InputMode.Center],
+            ['KeyV', InputMode.Color],
+        ] as const) {
+            if (code === key) {
+                set_default_input_mode(mode);
                 return;
-            }
-
-            for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD'] as const) {
-                if (code === key) {
-                    move_selection(code);
-                    return;
-                }
-            }
-
-            for (const [key, mode] of [
-                ['KeyZ', InputMode.Normal],
-                ['KeyX', InputMode.Corner],
-                ['KeyC', InputMode.Center],
-                ['KeyV', InputMode.Color],
-            ] as const) {
-                if (code === key) {
-                    set_default_input_mode(mode);
-                    return;
-                }
             }
         }
 
@@ -203,8 +197,7 @@ export function setup_listeners(
         }
 
         // 숫자 입력
-        for (const keyword of ['Digit', 'Numpad', 'Key']) {
-            if (keyword === 'Key' && !input_alphabet) continue;
+        for (const keyword of ['Digit', 'Numpad']) {
             if (code.startsWith(keyword)) {
                 e.preventDefault();
                 const key = code.slice(keyword.length);

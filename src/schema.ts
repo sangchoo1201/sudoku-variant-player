@@ -49,23 +49,28 @@ const DigitSchema = z.union([
 export type Digit = z.infer<typeof DigitSchema>;
 export const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
+const DigitOrZeroSchema = z.union([DigitSchema, z.literal(0)]);
+export type DigitOrZero = z.infer<typeof DigitOrZeroSchema>;
+
 const DirectionSchema = z.enum(["ROW", "COL"]);
 export type Direction = z.infer<typeof DirectionSchema>;
 const DirectionExtendedSchema = z.enum(["ROW_LEFT", "ROW", "COL_TOP", "COL"]);
 export type DirectionExtended = z.infer<typeof DirectionExtendedSchema>;
 
+const SetLikeSchema = z.record(z.string(), z.literal(true));
+
 const FixedCellStateSchema = z.object({
     fixed: z.literal(true),
     number: DigitSchema,
-    color: z.record(z.string(), z.literal(true)),
+    color: SetLikeSchema,
 });
 
 const EmptyCellStateSchema = z.object({
     fixed: z.literal(false),
     number: DigitSchema.nullable(),
-    corner: z.record(z.string(), z.literal(true)),
-    center: z.record(z.string(), z.literal(true)),
-    color: z.record(z.string(), z.literal(true)),
+    corner: SetLikeSchema,
+    center: SetLikeSchema,
+    color: SetLikeSchema,
 });
 
 const CellStateSchema = z.discriminatedUnion("fixed", [
@@ -81,33 +86,41 @@ export type BoardState = z.infer<typeof BoardStateSchema>;
 
 const SingleNumberChangeSchema = z.object({
     pos: PositionSchema,
-    before: DigitSchema.nullable(),
-    after: DigitSchema.nullable(),
+    number: DigitSchema.nullable(),
 });
 
 export type SingleNumberChange = z.infer<typeof SingleNumberChangeSchema>;
 
 const NumberChangeSchema = z.object({
     type: z.literal("normal"),
-    change: z.array(SingleNumberChangeSchema),
+    before: z.array(SingleNumberChangeSchema),
+    after: DigitSchema.nullable(),
 });
-
-const SingleMemoChangeSchema = z.object({
-    pos: PositionSchema,
-    before: z.record(z.string(), z.literal(true)),
-    after: z.record(z.string(), z.literal(true)),
-});
-
-export type SingleMemoChange = z.infer<typeof SingleMemoChangeSchema>;
 
 const MemoChangeSchema = z.object({
     type: z.enum(["corner", "center", "color"]),
-    change: z.array(SingleMemoChangeSchema),
+    delete: z.literal(false),
+    pos: z.array(PositionSchema),
+    memo: DigitOrZeroSchema,
 });
 
-const BoardChangeSchema = z.discriminatedUnion("type", [
+const SingleMemoDeleteSchema = z.object({
+    pos: PositionSchema,
+    memo: SetLikeSchema,
+});
+
+export type SingleMemoDelete = z.infer<typeof SingleMemoDeleteSchema>;
+
+const MemoDeleteSchema = z.object({
+    type: z.enum(["corner", "center", "color"]),
+    delete: z.literal(true),
+    before: z.array(SingleMemoDeleteSchema),
+})
+
+const BoardChangeSchema = z.union([
     NumberChangeSchema,
     MemoChangeSchema,
+    MemoDeleteSchema,
 ]);
 
 export type BoardChange = z.infer<typeof BoardChangeSchema>;
@@ -141,33 +154,27 @@ const CompressedBoardStateSchema = z.array(
     z.array(CompressedCellStateSchema).length(9)
 ).length(9);
 
-const CompressedSingleNumberChangeSchema = z.tuple([
-    BoardCoordSchema,
-    BoardCoordSchema,
-    z.union([DigitSchema, z.literal(0)]),
-    z.union([DigitSchema, z.literal(0)]),
-]);
-
 const CompressedNumberChangeSchema = z.tuple([
     z.literal(0),
-    z.array(CompressedSingleNumberChangeSchema),
-]);
-
-const CompressedSingleMemoChangeSchema = z.tuple([
-    BoardCoordSchema,
-    BoardCoordSchema,
-    z.string(),
-    z.string(),
+    z.array(z.number()),
+    DigitOrZeroSchema,
 ]);
 
 const CompressedMemoChangeSchema = z.tuple([
     z.union([z.literal(1), z.literal(2), z.literal(3)]),
-    z.array(CompressedSingleMemoChangeSchema),
+    z.union([z.number(), z.string()]),
+    DigitOrZeroSchema,
+]);
+
+const CompressedMemoDeleteSchema = z.tuple([
+    z.union([z.literal(4), z.literal(5), z.literal(6)]),
+    z.array(z.tuple([z.number(), z.string()])),
 ]);
 
 const CompressedBoardChangeSchema = z.union([
     CompressedNumberChangeSchema,
     CompressedMemoChangeSchema,
+    CompressedMemoDeleteSchema,
 ]);
 
 export type CompressedBoardChange = z.infer<typeof CompressedBoardChangeSchema>;

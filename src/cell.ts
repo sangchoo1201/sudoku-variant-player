@@ -1,11 +1,11 @@
 import type {CellType} from "./main.ts";
 import {
     type BoardChange,
-    type Digit,
+    type Digit, type DigitOrZero,
     type Position,
     position_generator,
     type PositionExtended,
-    type Rule, type SingleMemoChange, type SingleNumberChange,
+    type Rule, type SingleMemoDelete, type SingleNumberChange,
     type SolvingState
 } from "./schema.ts";
 import {check_all} from "./rule.ts";
@@ -132,8 +132,6 @@ const modal = document.getElementById('info-modal')!;
 let last_cell: HTMLDivElement | null = null;
 let default_input_mode: InputMode = InputMode.Normal;
 let input_mode: InputMode | null = null;
-let default_input_alphabet: boolean = false;
-let input_alphabet: boolean | null = null;
 let selected = new Set<number>();
 const encode = ([r, c]: Position) => r * 100 + c;
 const decode = (k: number) => [Math.floor(k / 100), k % 100] as Position;
@@ -208,14 +206,6 @@ export function set_input_mode(mode: InputMode | null) {
 
 export function get_input_mode(): InputMode {
     return input_mode ?? default_input_mode;
-}
-
-export function set_input_alphabet(b: boolean | null) {
-    input_alphabet = b;
-}
-
-export function get_input_alphabet(): boolean {
-    return input_alphabet ?? default_input_alphabet;
 }
 
 export function is_selected(pos: Position): boolean {
@@ -318,7 +308,7 @@ function normal_modify([r, c]: Position, modify: ModifyType): SingleNumberChange
         cell_element.cell.classList.remove('filled');
     }
 
-    return before === after ? null : { pos: [r, c], before, after };
+    return before === after ? null : { pos: [r, c], number: before };
 }
 
 function equal_set(s1: Record<string, true>, s2: Record<string, true>): boolean {
@@ -327,7 +317,7 @@ function equal_set(s1: Record<string, true>, s2: Record<string, true>): boolean 
     return k1.every(x => Object.hasOwn(s2, x));
 }
 
-function set_modify(pos: Position, set: Record<string, true>, modify: ModifyType): SingleMemoChange | null {
+function set_modify(set: Record<string, true>, modify: ModifyType): boolean {
     const before = { ...set };
     switch (modify.type) {
         case "add":
@@ -354,17 +344,17 @@ function set_modify(pos: Position, set: Record<string, true>, modify: ModifyType
             break;
     }
     const after = { ...set };
-    return equal_set(before, after) ? null : { pos, before, after };
+    return !equal_set(before, after);
 }
 
-function corner_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | null {
+function corner_modify([r, c]: Position, modify: ModifyType): boolean {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed) return null;
-    if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return null;
+    if (cell_state.fixed) return false;
+    if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return false;
 
-    const change = set_modify([r, c], cell_state.corner, modify);
-    if (change === null && modify.type !== "nothing") return null;
+    const change = set_modify(cell_state.corner, modify);
+    if (!change && modify.type !== "nothing") return false;
 
     const sorted_keys = Object.keys(cell_state.corner).sort();
     for (let i = 0; i < 8; i++) {
@@ -374,29 +364,29 @@ function corner_modify([r, c]: Position, modify: ModifyType): SingleMemoChange |
             cell_element.corner[i].textContent = '';
         }
     }
-    return change;
+    return true;
 }
 
-function center_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | null {
+function center_modify([r, c]: Position, modify: ModifyType): boolean {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
-    if (cell_state.fixed) return null;
-    if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return null;
+    if (cell_state.fixed) return false;
+    if (cell_state.number !== null && modify.type !== "nothing" && modify.type !== "overwrite_memo") return false;
 
-    const change = set_modify([r, c], cell_state.center, modify);
-    if (change === null && modify.type !== "nothing") return null;
+    const change = set_modify(cell_state.center, modify);
+    if (!change && modify.type !== "nothing") return false;
 
     const sorted_keys = Object.keys(cell_state.center).sort();
     cell_element.center.textContent = sorted_keys.join('').slice(0, 8);
-    return change;
+    return true;
 }
 
-function color_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | null {
+function color_modify([r, c]: Position, modify: ModifyType): boolean {
     const cell_element = cell_map[r][c];
     const cell_state = solving_state.board[r][c];
 
-    const change = set_modify([r, c], cell_state.color, modify);
-    if (change === null && modify.type !== "nothing") return null;
+    const change = set_modify(cell_state.color, modify);
+    if (!change && modify.type !== "nothing") return false;
 
     const sorted_keys = Object.keys(cell_state.color).map(Number).sort();
     cell_element.color.replaceChildren();
@@ -404,13 +394,10 @@ function color_modify([r, c]: Position, modify: ModifyType): SingleMemoChange | 
     for (const polygon of polygons) {
         cell_element.color.appendChild(polygon);
     }
-    return change;
+    return true;
 }
 
-type SingleChange = SingleNumberChange | SingleMemoChange | null;
-
-const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => SingleChange> = {
-    [InputMode.Normal]: normal_modify,
+const memo_modify = {
     [InputMode.Corner]: corner_modify,
     [InputMode.Center]: center_modify,
     [InputMode.Color]: color_modify,
@@ -418,20 +405,20 @@ const modify_functions: Record<InputMode, (p: Position, m: ModifyType) => Single
 
 export function update_all() {
     for (const p of position_generator()) {
-        for (const f of Object.values(modify_functions)) {
+        for (const f of [normal_modify, corner_modify, center_modify, color_modify]) {
             f(p, Modify.nothing());
         }
     }
+    show_errors();
 }
 
 function update_board(changes: BoardChange) {
-    if (changes.change.length === 0) return;
-
     if (changes.type === InputMode.Normal) {
+        if (changes.before.length === 0) return;
         show_errors();
     }
     solving_state.undo.push(changes);
-    if (solving_state.undo.length > 200) {
+    if (solving_state.undo.length > 100) {
         solving_state.undo.shift();
     }
     solving_state.redo = [];
@@ -440,19 +427,25 @@ function update_board(changes: BoardChange) {
 
 export function apply_value(value: string) {
     const mode = get_input_mode();
-    const alphabet = get_input_alphabet();
 
     if (mode === InputMode.Normal && !('1' <= value && value <= '9')) return;
-    if ((mode === InputMode.Color || !alphabet) && !('0' <= value && value <= '9')) return;
 
     const add = !is_common(value);
-    const changes: SingleChange[] = [];
-    selected.forEach(k => {
-        const result = modify_functions[mode](decode(k), (add ? Modify.add : Modify.remove)(value));
-        if (result !== null) changes.push(result);
-    });
-
-    update_board({ type: mode, change: changes } as BoardChange);
+    if (mode === InputMode.Normal) {
+        const before: SingleNumberChange[] = [];
+        selected.forEach(k => {
+            const result = normal_modify(decode(k), (add ? Modify.add : Modify.remove)(value));
+            if (result !== null) before.push(result);
+        });
+        update_board({ type: "normal", before, after: (add ? Number(value) as Digit : null) });
+    } else {
+        const pos: Position[] = [];
+        selected.forEach(k => {
+            const result = memo_modify[mode](decode(k), (add ? Modify.add : Modify.remove)(value));
+            if (result) pos.push(decode(k));
+        });
+        update_board({ type: mode, delete: false, pos, memo: Number(value) as DigitOrZero });
+    }
 }
 
 export function clear_value() {
@@ -483,13 +476,25 @@ export function clear_value() {
     if (has_mode[input_mode]) mode = input_mode;
     if (mode === null) return;
 
-    const changes: SingleChange[] = [];
-    selected.forEach(k => {
-        const result = modify_functions[mode](decode(k), Modify.reset());
-        if (result !== null) changes.push(result);
-    });
-
-    update_board({ type: mode, change: changes } as BoardChange);
+    if (mode === InputMode.Normal) {
+        const before: SingleNumberChange[] = [];
+        selected.forEach(k => {
+            const result = normal_modify(decode(k), Modify.reset());
+            if (result !== null) before.push(result);
+        });
+        update_board({ type: "normal", before, after: null });
+    } else {
+        const before: SingleMemoDelete[] = [];
+        selected.forEach(k => {
+            const [r, c] = decode(k);
+            const cell = solving_state.board[r][c];
+            if (cell.fixed) return;
+            const set = { ...cell[mode] };
+            const result = memo_modify[mode]([r, c], Modify.reset());
+            if (result) before.push({ pos: [r, c], memo: set });
+        });
+        update_board({ type: mode, delete: true, before: before } as BoardChange);
+    }
 }
 
 export function append_errors(error_positions: PositionExtended[]) {
@@ -557,15 +562,23 @@ export function undo() {
     if (action === undefined) return;
     solving_state.redo.push(action);
 
-    const modify_function = modify_functions[action.type];
     if (action.type === "normal") {
-        for (const change of action.change) {
-            modify_function(change.pos, Modify.overwrite_number(change.before));
+        for (const { pos, number } of action.before) {
+            normal_modify(pos, Modify.overwrite_number(number));
         }
         show_errors();
+    } else if (action.delete) {
+        const modify_function = memo_modify[action.type];
+        for (const { pos, memo } of action.before) {
+            modify_function(pos, Modify.overwrite_memo(memo));
+        }
     } else {
-        for (const change of action.change) {
-            modify_function(change.pos, Modify.overwrite_memo(change.before));
+        const modify_function = memo_modify[action.type];
+        const [r, c] = action.pos[0];
+        const cell = solving_state.board[r][c];
+        const add = (!cell.fixed && cell[action.type][action.memo] !== true);
+        for (const pos of action.pos) {
+            modify_function(pos, (add ? Modify.add : Modify.remove)(action.memo.toString()));
         }
     }
     save_state(puzzle_id, solving_state);
@@ -576,15 +589,23 @@ export function redo() {
     if (action === undefined) return;
     solving_state.undo.push(action);
 
-    const modify_function = modify_functions[action.type];
     if (action.type === "normal") {
-        for (const change of action.change) {
-            modify_function(change.pos, Modify.overwrite_number(change.after));
+        for (const { pos } of action.before) {
+            normal_modify(pos, Modify.overwrite_number(action.after));
         }
         show_errors();
+    } else if (action.delete) {
+        const modify_function = memo_modify[action.type];
+        for (const { pos } of action.before) {
+            modify_function(pos, Modify.reset());
+        }
     } else {
-        for (const change of action.change) {
-            modify_function(change.pos, Modify.overwrite_memo(change.after));
+        const modify_function = memo_modify[action.type];
+        const [r, c] = action.pos[0];
+        const cell = solving_state.board[r][c];
+        const add = (!cell.fixed && cell[action.type][action.memo] !== true);
+        for (const pos of action.pos) {
+            modify_function(pos, (add ? Modify.add : Modify.remove)(action.memo.toString()));
         }
     }
     save_state(puzzle_id, solving_state);
