@@ -63,25 +63,25 @@ export function setup_listeners(
         [InputMode.Color, 'button-color'],
     ] as [InputModeType, string][]) {
         const button = document.querySelector<HTMLButtonElement>(`#${button_id}`)!;
-        button.addEventListener('click', () => {
+        button.addEventListener('pointerdown', () => {
             set_default_input_mode(input_mode);
         });
     }
 
     for (let i = 0; i <= 9; i++) {
         const button = document.querySelector<HTMLButtonElement>(`#button-${i}`)!;
-        button.addEventListener('click', () => {
+        button.addEventListener('pointerdown', () => {
             apply_value(i.toString());
         });
     }
 
     const button_delete = document.querySelector<HTMLButtonElement>('#button-delete')!;
-    button_delete.addEventListener('click', () => {
+    button_delete.addEventListener('pointerdown', () => {
         clear_value();
     });
 
     const button_load_text = document.querySelector<HTMLButtonElement>('#button-load-text')!;
-    button_load_text.addEventListener('click', async () => {
+    button_load_text.addEventListener('pointerdown', async () => {
         const text = prompt("Enter base64 code or puzzle id");
         if (!text) return;
 
@@ -94,7 +94,7 @@ export function setup_listeners(
     });
 
     const button_copy_board = document.querySelector<HTMLButtonElement>('#button-copy-board')!;
-    button_copy_board.addEventListener('click', async () => {
+    button_copy_board.addEventListener('pointerdown', async () => {
         const text = selection_to_text(true);
         if (text.includes("0")) {
             const proceed = confirm("Empty cell detected. Do you want to copy anyway?");
@@ -105,16 +105,16 @@ export function setup_listeners(
     });
 
     const button_open_info = document.querySelector<HTMLButtonElement>('#button-open-info')!;
-    button_open_info.addEventListener('click', open_info);
+    button_open_info.addEventListener('pointerdown', open_info);
 
     const button_close_info = document.querySelector<HTMLButtonElement>('#button-close-info')!;
-    button_close_info.addEventListener('click', close_info);
+    button_close_info.addEventListener('pointerdown', close_info);
 
     const button_undo = document.querySelector<HTMLButtonElement>('#button-undo')!;
-    button_undo.addEventListener('click', undo);
+    button_undo.addEventListener('pointerdown', undo);
 
     const button_redo = document.querySelector<HTMLButtonElement>('#button-redo')!;
-    button_redo.addEventListener('click', redo);
+    button_redo.addEventListener('pointerdown', redo);
 
     function move_selection(code: string) {
         const last_cell = get_last_cell();
