@@ -81,7 +81,7 @@ export function setup_listeners(
     });
 
     const button_load_text = document.querySelector<HTMLButtonElement>('#button-load-text')!;
-    button_load_text.addEventListener('pointerdown', async () => {
+    button_load_text.addEventListener('click', async () => {
         const text = prompt("Enter base64 code or puzzle id");
         if (!text) return;
 
@@ -94,7 +94,7 @@ export function setup_listeners(
     });
 
     const button_copy_board = document.querySelector<HTMLButtonElement>('#button-copy-board')!;
-    button_copy_board.addEventListener('pointerdown', async () => {
+    button_copy_board.addEventListener('click', async () => {
         const text = selection_to_text(true);
         if (text.includes("0")) {
             const proceed = confirm("Empty cell detected. Do you want to copy anyway?");
@@ -105,16 +105,16 @@ export function setup_listeners(
     });
 
     const button_open_info = document.querySelector<HTMLButtonElement>('#button-open-info')!;
-    button_open_info.addEventListener('pointerdown', open_info);
+    button_open_info.addEventListener('click', open_info);
 
     const button_close_info = document.querySelector<HTMLButtonElement>('#button-close-info')!;
-    button_close_info.addEventListener('pointerdown', close_info);
+    button_close_info.addEventListener('click', close_info);
 
     const button_undo = document.querySelector<HTMLButtonElement>('#button-undo')!;
-    button_undo.addEventListener('pointerdown', undo);
+    button_undo.addEventListener('click', undo);
 
     const button_redo = document.querySelector<HTMLButtonElement>('#button-redo')!;
-    button_redo.addEventListener('pointerdown', redo);
+    button_redo.addEventListener('click', redo);
 
     function move_selection(code: string) {
         const last_cell = get_last_cell();
