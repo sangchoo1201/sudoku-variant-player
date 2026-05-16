@@ -155,6 +155,7 @@ function extract_board_change(change: CompressedBoardChange): BoardChange {
 }
 
 export function save_state(puzzle_id: string, solving_state: SolvingState) {
+    if (puzzle_id === "#00000") return;
     const key = `sudoku_variant_${puzzle_id}`;
 
     const compressed: CompressedSolvingState = [
