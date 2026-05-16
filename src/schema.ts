@@ -465,6 +465,15 @@ const BridgeRuleSchema = z.object({
 
 export type BridgeRule = z.infer<typeof BridgeRuleSchema>;
 
+const ReflexRuleSchema = z.object({
+    id: z.literal("[EF]"),
+    render_state: z.object({
+        marked_cells: z.array(PositionSchema),
+    }),
+});
+
+export type ReflexRule = z.infer<typeof ReflexRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -502,6 +511,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     BumperRuleSchema,
 
     BridgeRuleSchema,
+    ReflexRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

@@ -24,7 +24,7 @@ import {
     type Direction,
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
-    type DirectionExtended, type BridgeRule,
+    type DirectionExtended, type BridgeRule, type ReflexRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -34,6 +34,7 @@ type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: 
 type CoordinateMappingFunction = (i: number, j: number) => Position;
 
 const adjacent = [[0, -1], [0, 1], [-1, 0], [1, 0]] as const;
+const king_adjacent = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]] as const;
 
 function is_coord(n: number): n is BoardCoord {
     return Number.isInteger(n) && 0 <= n && n < 9;
@@ -154,7 +155,7 @@ function generic_duplicate_check(
 }
 
 function generic_pair_check(
-    solving_state: SolvingState, neighbors: [number, number][]
+    solving_state: SolvingState, neighbors: readonly (readonly [number, number])[]
 ): RuleCheckingResult {
     const get_neighbors = (r: number, c: number) => {
         return neighbors
@@ -180,9 +181,7 @@ function generic_pair_check(
 
 const sudoku_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
     [solving_state.board.every(
-        row => row.every(
-            cell => cell.number !== null
-        )
+        row => row.every(cell => cell.number !== null)
     ), []];
 
 const row_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
@@ -202,7 +201,7 @@ const segment_check: RuleCheckingFunction<SegmentRule> = (solving_state: Solving
     );
 
 const distant_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
-    generic_pair_check(solving_state, [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]);
+    generic_pair_check(solving_state, king_adjacent);
 
 const link_check: RuleCheckingFunction<LinkRule> = function (
     solving_state: SolvingState, rule: LinkRule
@@ -947,6 +946,41 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
     return errors.result();
 }
 
+const reflex_check: RuleCheckingFunction<ReflexRule> = function (
+    solving_state: SolvingState, rule: ReflexRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    next: for (const [r, c] of rule.render_state.marked_cells) {
+        const v = solving_state.board[r][c].number;
+
+        let null_count = 0;
+        const counts = Array(10).fill(0);
+        const neighbors = king_adjacent
+            .map(([dr, dc]) => [r + dr, c + dc] as [number, number])
+            .filter(is_pos);
+        for (const [nr, nc] of neighbors) {
+            const nv = solving_state.board[nr][nc].number;
+            if (nv === null) {
+                null_count++;
+            } else {
+                counts[nv]++;
+            }
+        }
+
+        let sum = 0;
+        const prefix = counts.map(x => sum += x);
+        for (const i of digits) {
+            if (v !== null && v !== i) continue;
+            if (prefix[i] <= i && i <= prefix[i] + null_count) continue next;
+        }
+
+        errors.add([r, c]);
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -978,6 +1012,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[TR]": (state, rule) => trail_check(state, rule as TrailRule),
     "[PD]": (state, rule) => product_check(state, rule as ProductRule),
     "[BD]": (state, rule) => bridge_check(state, rule as BridgeRule),
+    "[EF]": (state, rule) => reflex_check(state, rule as ReflexRule),
 } as const;
 
 export function check_all(

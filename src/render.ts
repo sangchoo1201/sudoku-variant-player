@@ -14,7 +14,7 @@ import type {
     RuleID,
     SideRule,
     PointRule, VectorRule, StreamRule, PairRule, InversionRule, Position, Direction,
-    TrailRule, DirectionExtended, ProductRule, BridgeRule,
+    TrailRule, DirectionExtended, ProductRule, BridgeRule, ReflexRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -461,6 +461,23 @@ const bridge_render: Renderer<BridgeRule> = function (ctx: RenderContext, rule: 
     }
 }
 
+const reflex_render: Renderer<ReflexRule> = function (ctx: RenderContext, rule: ReflexRule) {
+    for (const [r, c] of rule.render_state.marked_cells) {
+        const points = [[c, r], [c + 1, r], [c + 1, r + 1], [c, r + 1]] as [number, number][];
+        const polygon = generate_polygon(points);
+        polygon.setAttribute("fill", "rgba(255, 255, 127, 0.3)");
+
+        const circle = generate_circle(pos_to_coord([r, c]));
+        circle.setAttribute("r", "0.32");
+        circle.setAttribute("fill", "none");
+        circle.setAttribute("stroke", "rgba(255, 220, 63, 0.6)");
+        circle.setAttribute("stroke-width", "0.04");
+
+        ctx.layer_bottom.appendChild(polygon);
+        ctx.layer_bottom.appendChild(circle);
+    }
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -563,6 +580,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[TR]": (ctx, r) => trail_render(ctx, r as TrailRule),
     "[PD]": (ctx, r) => product_render(ctx, r as ProductRule),
     "[BD]": (ctx, r) => bridge_render(ctx, r as BridgeRule),
+    "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[ST]": nothing_render,  // TODO
 };
 
