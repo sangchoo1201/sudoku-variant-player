@@ -430,6 +430,9 @@ const reference_check: RuleCheckingFunction<ReferenceRule> = function (
     return errors.result();
 }
 
+const square_first = new Set([1, 2, 3, 4, 6, 8]);
+const square_second = new Set([1, 4, 5, 6, 9]);
+const prime_second = new Set([1, 3, 7, 9]);
 const square_numbers = new Set([16, 25, 36, 49, 64, 81]);
 const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]);
 
@@ -441,13 +444,20 @@ const prism_check: RuleCheckingFunction<PrismRule> = function (
     for (const [r1, c1, r2, c2, type] of rule.render_state.edges) {
         const v1 = solving_state.board[r1][c1].number;
         const v2 = solving_state.board[r2][c2].number;
-        if (v1 === null || v2 === null) continue;
 
-        const num = v1 * 10 + v2;
-        if (!(type ? prime_numbers : square_numbers).has(num)) {
-            errors.add([r1, c1]);
-            errors.add([r2, c2]);
+        if (v1 === null && v2 === null) continue;
+        if (v1 !== null && v2 === null) {
+            if (type ? true : square_first.has(v1)) continue;
         }
+        if (v1 === null && v2 !== null) {
+            if (type ? prime_second.has(v2) : square_second.has(v2)) continue;
+        }
+        if (v1 !== null && v2 !== null) {
+            const num = v1 * 10 + v2;
+            if (type ? prime_numbers.has(num): square_numbers.has(num)) continue;
+        }
+        errors.add([r1, c1]);
+        errors.add([r2, c2]);
     }
 
     return errors.result();
