@@ -14,7 +14,7 @@ import type {
     RuleID,
     SideRule,
     PointRule, VectorRule, StreamRule, PairRule, InversionRule, Position, Direction,
-    TrailRule, DirectionExtended, ProductRule,
+    TrailRule, DirectionExtended, ProductRule, BridgeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -22,6 +22,7 @@ type RenderContext = {
     layer_middle: SVGSVGElement,
     layer_top: {
         parent: SVGSVGElement,
+        bridge: SVGGElement,
         prism: SVGGElement,
         link: SVGGElement,
         point: SVGGElement,
@@ -37,13 +38,13 @@ function pos_to_coord([r, c]: Position): Coordinate {
     return [c + 0.5, r + 0.5];
 }
 
-function generate_circle([r, c]: Position): SVGCircleElement {
+function generate_circle([x, y]: Coordinate): SVGCircleElement {
     const circle = document.createElementNS(
         "http://www.w3.org/2000/svg",
         "circle"
     );
-    circle.setAttribute("cx", (c + 0.5).toString());
-    circle.setAttribute("cy", (r + 0.5).toString());
+    circle.setAttribute("cx", x.toString());
+    circle.setAttribute("cy", y.toString());
     return circle;
 }
 
@@ -183,7 +184,7 @@ const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: Link
 
 const lotus_render: Renderer<LotusRule> = function (ctx: RenderContext, rule: LotusRule) {
     for (const [r, c] of rule.render_state.cells) {
-        const circle = generate_circle([r, c]);
+        const circle = generate_circle(pos_to_coord([r, c]));
 
         circle.setAttribute("r", "0.3");
         circle.setAttribute("fill", "rgba(189, 235, 107, 0.5)");
@@ -201,7 +202,7 @@ const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: Me
         if (h >= 150) h += 60;
         const color = `hsla(${h}, 80%, 40%, 0.4)`;
         for (const [r, c] of metro) {
-            const circle = generate_circle([r, c]);
+            const circle = generate_circle(pos_to_coord([r, c]));
             circle.setAttribute("r", "0.06");
             circle.setAttribute("fill", color);
             ctx.layer_bottom.appendChild(circle);
@@ -261,7 +262,7 @@ const inversion_render: Renderer<InversionRule> = function (ctx: RenderContext, 
         );
         g.setAttribute("opacity", "0.5");
 
-        const circle = generate_circle(line[0]);
+        const circle = generate_circle(pos_to_coord(line[0]));
         circle.setAttribute("r", "0.2");
         circle.setAttribute("fill", "rgb(30, 194, 112)");
         g.appendChild(circle);
@@ -300,8 +301,8 @@ const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: Pr
 }
 
 const triangle_rotation = (x: number, y: number, r3: number = 3 ** 0.5): [number, number][] => [
-    [x, y],
     [-x / 2 - y * r3 / 2, x * r3 / 2 - y / 2],
+    [x, y],
     [-x / 2 + y * r3 / 2, -x * r3 / 2 - y / 2],
 ]
 
@@ -441,13 +442,22 @@ const trail_render: Renderer<TrailRule> = function (ctx: RenderContext, rule: Tr
         [rule.render_state.start, "rgb(0, 127, 255)"],
         [rule.render_state.end, "rgb(255, 127, 0)"]
     ] as [Position, string][]) {
-        const circle = generate_circle(pos);
+        const circle = generate_circle(pos_to_coord(pos));
         circle.setAttribute("r", "0.33");
         circle.setAttribute("stroke", color);
         circle.setAttribute("stroke-width", "0.04");
         circle.setAttribute("fill", color);
         circle.setAttribute("fill-opacity", "0.4");
         ctx.layer_bottom.appendChild(circle);
+    }
+}
+
+const bridge_render: Renderer<BridgeRule> = function (ctx: RenderContext, rule: BridgeRule) {
+    for (const row of rule.render_state.starts) {
+        const circle = generate_circle([0, row + 0.5]);
+        circle.setAttribute("r", "0.1");
+        circle.setAttribute("fill", "#777");
+        ctx.layer_top.bridge.appendChild(circle);
     }
 }
 
@@ -552,6 +562,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[IV]": (ctx, r) => inversion_render(ctx, r as InversionRule),
     "[TR]": (ctx, r) => trail_render(ctx, r as TrailRule),
     "[PD]": (ctx, r) => product_render(ctx, r as ProductRule),
+    "[BD]": (ctx, r) => bridge_render(ctx, r as BridgeRule),
     "[ST]": nothing_render,  // TODO
 };
 
@@ -561,6 +572,7 @@ export function render_all(rules: Rule[]) {
         layer_middle: document.querySelector<SVGSVGElement>("#layer-middle")!,
         layer_top: {
             parent: document.querySelector<SVGSVGElement>("#layer-top")!,
+            bridge: document.querySelector<SVGGElement>("#layer-top-bridge")!,
             prism: document.querySelector<SVGGElement>("#layer-top-prism")!,
             link: document.querySelector<SVGGElement>("#layer-top-link")!,
             point: document.querySelector<SVGGElement>("#layer-top-point")!,

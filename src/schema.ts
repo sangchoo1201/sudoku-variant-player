@@ -456,6 +456,15 @@ const BumperRuleSchema = z.object({
     id: z.literal("[BP]"),
 });
 
+const BridgeRuleSchema = z.object({
+    id: z.literal("[BD]"),
+    render_state: z.object({
+        starts: z.array(BoardCoordSchema),
+    }),
+});
+
+export type BridgeRule = z.infer<typeof BridgeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -491,6 +500,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     EpsilonRuleSchema,
     ProductRuleSchema,
     BumperRuleSchema,
+
+    BridgeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

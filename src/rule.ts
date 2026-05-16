@@ -24,7 +24,7 @@ import {
     type Direction,
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
-    type DirectionExtended,
+    type DirectionExtended, type BridgeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -900,7 +900,54 @@ const bumper_check: PureCheckingFunction = function (solving_state: SolvingState
     return errors.result();
 }
 
-const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResult> = {
+const bridge_check: RuleCheckingFunction<BridgeRule> = function (
+    solving_state: SolvingState, rule: BridgeRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const encode = ([r, c]: Position, n: Digit | null): number =>
+        r * 100 + c * 10 + (n ?? 0);
+
+    const min_row: number[] = Array(9).fill(-1);
+
+    function dfs(stack: Position[], n: Digit | null, visited: Set<number>): Position[] | null {
+        const [r, c] = stack[stack.length - 1];
+        const v = solving_state.board[r][c].number;
+        if (r <= min_row[c]) return null;
+        if (n !== null && v !== null && n !== v) return null;
+        if (c === 8) return stack;
+
+        const current = n ?? v;
+
+        if (visited.has(encode([r, c], current)) || visited.has(encode([r, c], null))) return null;
+        visited.add(encode([r, c], current));
+
+        const nc = c + 1;
+        for (const nr of [r - 1, r, r + 1]) {
+            const np = [nr, nc] as [number, number];
+            if (!is_pos(np)) continue;
+            stack.push(np);
+            const result = dfs(stack, current === null ? null : (current % 9 + 1 as Digit), visited);
+            if (result !== null) return result;
+            stack.pop();
+        }
+        return null;
+    }
+
+    for (const start of rule.render_state.starts) {
+        const result = dfs([[start, 0]], null, new Set<number>());
+        console.log(result);
+        if (result === null) {
+            errors.add([start, 0]);
+        } else {
+            result.forEach(([r, c]) => { min_row[c] = Math.max(min_row[c], r) });
+        }
+    }
+
+    return errors.result();
+}
+
+const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
     "[C]": column_check,
@@ -911,25 +958,26 @@ const rule_checks: Record<RuleID, (s: SolvingState, r: Rule) => RuleCheckingResu
     "[TP]": triplet_check,
     "[EP]": epsilon_check,
     "[BP]": bumper_check,
-    "[SG]": (s, r) => segment_check(s, r as SegmentRule),
-    "[LK]": (s, r) => link_check(s, r as LinkRule),
-    "[LO]": (s, r) => lotus_check(s, r as LotusRule),
-    "[MR]": (s, r) => metro_check(s, r as MetroRule),
-    "[RF]": (s, r) => reference_check(s, r as ReferenceRule),
-    "[PR]": (s, r) => prism_check(s, r as PrismRule),
-    "[QT]": (s, r) => quantum_check(s, r as QuantumRule),
-    "[RG]": (s, r) => range_check(s, r as RangeRule),
-    "[SQ]": (s, r) => sequence_check(s, r as SequenceRule),
-    "[TM]": (s, r) => temperature_check(s, r as TemperatureRule),
-    "[RT]": (s, r) => root_check(s, r as RootRule),
-    "[PO]": (s, r) => point_check(s, r as PointRule),
-    "[ST]": (s, r) => stencil_check(s, r as StencilRule),
-    "[VT]": (s, r) => vector_check(s, r as VectorRule),
-    "[SR]": (s, r) => stream_check(s, r as StreamRule),
-    "[PA]": (s, r) => pair_check(s, r as PairRule),
-    "[IV]": (s, r) => inversion_check(s, r as InversionRule),
-    "[TR]": (s, r) => trail_check(s, r as TrailRule),
-    "[PD]": (s, r) => product_check(s, r as ProductRule),
+    "[SG]": (state, rule) => segment_check(state, rule as SegmentRule),
+    "[LK]": (state, rule) => link_check(state, rule as LinkRule),
+    "[LO]": (state, rule) => lotus_check(state, rule as LotusRule),
+    "[MR]": (state, rule) => metro_check(state, rule as MetroRule),
+    "[RF]": (state, rule) => reference_check(state, rule as ReferenceRule),
+    "[PR]": (state, rule) => prism_check(state, rule as PrismRule),
+    "[QT]": (state, rule) => quantum_check(state, rule as QuantumRule),
+    "[RG]": (state, rule) => range_check(state, rule as RangeRule),
+    "[SQ]": (state, rule) => sequence_check(state, rule as SequenceRule),
+    "[TM]": (state, rule) => temperature_check(state, rule as TemperatureRule),
+    "[RT]": (state, rule) => root_check(state, rule as RootRule),
+    "[PO]": (state, rule) => point_check(state, rule as PointRule),
+    "[ST]": (state, rule) => stencil_check(state, rule as StencilRule),
+    "[VT]": (state, rule) => vector_check(state, rule as VectorRule),
+    "[SR]": (state, rule) => stream_check(state, rule as StreamRule),
+    "[PA]": (state, rule) => pair_check(state, rule as PairRule),
+    "[IV]": (state, rule) => inversion_check(state, rule as InversionRule),
+    "[TR]": (state, rule) => trail_check(state, rule as TrailRule),
+    "[PD]": (state, rule) => product_check(state, rule as ProductRule),
+    "[BD]": (state, rule) => bridge_check(state, rule as BridgeRule),
 } as const;
 
 export function check_all(
