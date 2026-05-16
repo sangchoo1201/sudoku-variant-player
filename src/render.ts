@@ -454,11 +454,19 @@ const trail_render: Renderer<TrailRule> = function (ctx: RenderContext, rule: Tr
 }
 
 const bridge_render: Renderer<BridgeRule> = function (ctx: RenderContext, rule: BridgeRule) {
-    for (const row of rule.render_state.starts) {
-        const circle = generate_circle([0, row + 0.5]);
-        circle.setAttribute("r", "0.1");
-        circle.setAttribute("fill", "#777");
-        ctx.layer_top.bridge.appendChild(circle);
+    const d = 0.15;
+    for (const row of rule.render_state.start_rows) {
+        const cx = 0, cy = row + 0.5;
+        const points: Coordinate[] = [[cx, cy - d], [cx + d, cy], [cx, cy + d], [cx - d, cy]];
+        const poly = generate_polygon(points);
+        poly.setAttribute("fill", "rgb(190, 0, 0)");
+
+        const line = generate_line([0, row - 0.03], [0, row + 1.03]);
+        line.setAttribute("stroke", "rgb(220, 0, 0)");
+        line.setAttribute("stroke-width", "0.1");
+
+        ctx.layer_top.bridge.appendChild(line);
+        ctx.layer_top.bridge.appendChild(poly);
     }
 }
 

@@ -459,7 +459,7 @@ const BumperRuleSchema = z.object({
 const BridgeRuleSchema = z.object({
     id: z.literal("[BD]"),
     render_state: z.object({
-        starts: z.array(BoardCoordSchema),
+        start_rows: z.array(BoardCoordSchema),
     }),
 });
 

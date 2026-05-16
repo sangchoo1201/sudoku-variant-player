@@ -943,7 +943,7 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
         return null;
     }
 
-    for (const start of rule.render_state.starts) {
+    for (const start of rule.render_state.start_rows) {
         const result = dfs([[start, 0]], null, new Set<number>());
         console.log(result);
         if (result === null) {
