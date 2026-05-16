@@ -356,9 +356,10 @@ const root_render: Renderer<RootRule> = function (ctx: RenderContext, rule: Root
         for (let i = 1; i ** 2 <= dist; i++) {
             if (dist % i ** 2 === 0) mx = i;
         }
-        let txt = ''
+        let txt = '';
         if (mx !== 1) txt += mx;
         if (mx ** 2 !== dist) txt += `√${Math.floor(dist / mx ** 2)}`;
+        if (dist === 1) txt = '1';
         text.textContent = txt;
 
         text.setAttribute("text-anchor", "middle");
