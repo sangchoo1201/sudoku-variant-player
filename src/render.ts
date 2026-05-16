@@ -591,6 +591,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[BD]": (ctx, r) => bridge_render(ctx, r as BridgeRule),
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[ST]": nothing_render,  // TODO
+    "[AQ]": nothing_render,  // TODO
 };
 
 export function render_all(rules: Rule[]) {

@@ -24,7 +24,7 @@ import {
     type Direction,
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
-    type DirectionExtended, type BridgeRule, type ReflexRule,
+    type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -991,6 +991,32 @@ const reflex_check: RuleCheckingFunction<ReflexRule> = function (
     return errors.result();
 }
 
+const aquarium_check: RuleCheckingFunction<AquariumRule> = function (
+    solving_state: SolvingState, rule: AquariumRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const encode = ([r, c]: Position): number => (r * 10 + c);
+    for (const region of rule.render_state.regions) {
+        const set = new Set<number>(region.map(encode));
+        let prev_max = 0, curr_max;
+        for (const r of board_coords) {
+            curr_max = prev_max;
+            for (const c of board_coords) {
+                if (!set.has(encode([r, c]))) continue;
+                const v = solving_state.board[r][c].number;
+                if (prev_max === 9 || v !== null && v <= prev_max) {
+                    errors.add([r, c]);
+                }
+                curr_max = Math.max(curr_max, v ?? 0, (prev_max + 1));
+            }
+            prev_max = curr_max;
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1023,6 +1049,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[PD]": (state, rule) => product_check(state, rule as ProductRule),
     "[BD]": (state, rule) => bridge_check(state, rule as BridgeRule),
     "[EF]": (state, rule) => reflex_check(state, rule as ReflexRule),
+    "[AQ]": (state, rule) => aquarium_check(state, rule as AquariumRule),
 } as const;
 
 export function check_all(

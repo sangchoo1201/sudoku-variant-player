@@ -81,14 +81,12 @@ const CellStateSchema = z.discriminatedUnion("fixed", [
 const BoardStateSchema = z.array(
     z.array(CellStateSchema).length(9)
 ).length(9);
-
 export type BoardState = z.infer<typeof BoardStateSchema>;
 
 const SingleNumberChangeSchema = z.object({
     pos: PositionSchema,
     number: DigitSchema.nullable(),
 });
-
 export type SingleNumberChange = z.infer<typeof SingleNumberChangeSchema>;
 
 const NumberChangeSchema = z.object({
@@ -108,7 +106,6 @@ const SingleMemoDeleteSchema = z.object({
     pos: PositionSchema,
     memo: SetLikeSchema,
 });
-
 export type SingleMemoDelete = z.infer<typeof SingleMemoDeleteSchema>;
 
 const MemoDeleteSchema = z.object({
@@ -122,7 +119,6 @@ const BoardChangeSchema = z.union([
     MemoChangeSchema,
     MemoDeleteSchema,
 ]);
-
 export type BoardChange = z.infer<typeof BoardChangeSchema>;
 
 export const SolvingStateSchema = z.object({
@@ -130,7 +126,6 @@ export const SolvingStateSchema = z.object({
     undo: z.array(BoardChangeSchema),
     redo: z.array(BoardChangeSchema),
 });
-
 export type SolvingState = z.infer<typeof SolvingStateSchema>;
 
 const CompressedFixedCellStateSchema = z.tuple([
@@ -176,7 +171,6 @@ const CompressedBoardChangeSchema = z.union([
     CompressedMemoChangeSchema,
     CompressedMemoDeleteSchema,
 ]);
-
 export type CompressedBoardChange = z.infer<typeof CompressedBoardChangeSchema>;
 
 export const CompressedSolvingStateSchema = z.tuple([
@@ -184,7 +178,6 @@ export const CompressedSolvingStateSchema = z.tuple([
     z.array(CompressedBoardChangeSchema),
     z.array(CompressedBoardChangeSchema),
 ]);
-
 export type CompressedSolvingState = z.infer<typeof CompressedSolvingStateSchema>;
 
 const SudokuRuleSchema = z.object({
@@ -213,7 +206,6 @@ const SegmentRuleSchema = z.object({
         regions: z.array(z.array(PositionSchema)),
     }),
 });
-
 export type SegmentRule = z.infer<typeof SegmentRuleSchema>;
 
 const LinkRuleSchema = z.object({
@@ -224,7 +216,6 @@ const LinkRuleSchema = z.object({
         ),
     }),
 });
-
 export type LinkRule = z.infer<typeof LinkRuleSchema>;
 
 const LotusRuleSchema = z.object({
@@ -233,7 +224,6 @@ const LotusRuleSchema = z.object({
         cells: z.array(PositionSchema),
     }),
 });
-
 export type LotusRule = z.infer<typeof LotusRuleSchema>;
 
 const MetroRuleSchema = z.object({
@@ -242,7 +232,6 @@ const MetroRuleSchema = z.object({
         metros: z.array(z.array(PositionSchema)),
     }),
 });
-
 export type MetroRule = z.infer<typeof MetroRuleSchema>;
 
 const SequenceRuleSchema = z.object({
@@ -257,7 +246,6 @@ const SequenceRuleSchema = z.object({
         ),
     }),
 });
-
 export type SequenceRule = z.infer<typeof SequenceRuleSchema>;
 
 const QuantumRuleSchema = z.object({
@@ -272,7 +260,6 @@ const QuantumRuleSchema = z.object({
         ),
     }),
 });
-
 export type QuantumRule = z.infer<typeof QuantumRuleSchema>;
 
 const RangeRuleSchema = z.object({
@@ -287,7 +274,6 @@ const RangeRuleSchema = z.object({
         ),
     }),
 });
-
 export type RangeRule = z.infer<typeof RangeRuleSchema>;
 
 const QuadRuleSchema = z.object({
@@ -305,7 +291,6 @@ const ReferenceRuleSchema = z.object({
         ),
     }),
 });
-
 export type ReferenceRule = z.infer<typeof ReferenceRuleSchema>;
 
 const PrismRuleSchema = z.object({
@@ -322,7 +307,6 @@ const PrismRuleSchema = z.object({
         ),
     }),
 });
-
 export type PrismRule = z.infer<typeof PrismRuleSchema>;
 
 const TemperatureRuleSchema = z.object({
@@ -336,7 +320,6 @@ const TemperatureRuleSchema = z.object({
         ),
     }),
 });
-
 export type TemperatureRule = z.infer<typeof TemperatureRuleSchema>;
 
 const RootRuleSchema = z.object({
@@ -347,7 +330,6 @@ const RootRuleSchema = z.object({
         ),
     }),
 });
-
 export type RootRule = z.infer<typeof RootRuleSchema>;
 
 const PointRuleSchema = z.object({
@@ -358,7 +340,6 @@ const PointRuleSchema = z.object({
         ),
     }),
 });
-
 export type PointRule = z.infer<typeof PointRuleSchema>;
 
 const StencilRuleSchema = z.object({
@@ -372,7 +353,6 @@ const StencilRuleSchema = z.object({
         ),
     }),
 });
-
 export type StencilRule = z.infer<typeof StencilRuleSchema>;
 
 const VectorRuleSchema = z.object({
@@ -383,7 +363,6 @@ const VectorRuleSchema = z.object({
         ),
     }),
 });
-
 export type VectorRule = z.infer<typeof VectorRuleSchema>;
 
 const StreamRuleSchema = z.object({
@@ -392,7 +371,6 @@ const StreamRuleSchema = z.object({
         streams: z.array(z.array(PositionSchema)),
     }),
 });
-
 export type StreamRule = z.infer<typeof StreamRuleSchema>;
 
 const PairRuleSchema = z.object({
@@ -403,7 +381,6 @@ const PairRuleSchema = z.object({
         ),
     }),
 });
-
 export type PairRule = z.infer<typeof PairRuleSchema>;
 
 const InversionRuleSchema = z.object({
@@ -412,7 +389,6 @@ const InversionRuleSchema = z.object({
         lines: z.array(z.array(PositionSchema)),
     }),
 });
-
 export type InversionRule = z.infer<typeof InversionRuleSchema>;
 
 const TrailRuleSchema = z.object({
@@ -422,7 +398,6 @@ const TrailRuleSchema = z.object({
         end: PositionSchema,
     }),
 });
-
 export type TrailRule = z.infer<typeof TrailRuleSchema>;
 
 const EscapeRuleSchema = z.object({
@@ -449,7 +424,6 @@ const ProductRuleSchema = z.object({
         ),
     }),
 });
-
 export type ProductRule = z.infer<typeof ProductRuleSchema>;
 
 const BumperRuleSchema = z.object({
@@ -462,7 +436,6 @@ const BridgeRuleSchema = z.object({
         start_rows: z.array(BoardCoordSchema),
     }),
 });
-
 export type BridgeRule = z.infer<typeof BridgeRuleSchema>;
 
 const ReflexRuleSchema = z.object({
@@ -471,8 +444,15 @@ const ReflexRuleSchema = z.object({
         marked_cells: z.array(PositionSchema),
     }),
 });
-
 export type ReflexRule = z.infer<typeof ReflexRuleSchema>;
+
+const AquariumRuleSchema = z.object({
+    id: z.literal("[AQ]"),
+    render_state: z.object({
+        regions: z.array(z.array(PositionSchema)),
+    }),
+});
+export type AquariumRule = z.infer<typeof AquariumRuleSchema>;
 
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
@@ -512,6 +492,7 @@ const RuleSchema = z.discriminatedUnion("id", [
 
     BridgeRuleSchema,
     ReflexRuleSchema,
+    AquariumRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
