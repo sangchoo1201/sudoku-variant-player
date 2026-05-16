@@ -982,7 +982,7 @@ const reflex_check: RuleCheckingFunction<ReflexRule> = function (
         const prefix = counts.map(x => sum += x);
         for (const i of digits) {
             if (v !== null && v !== i) continue;
-            if (prefix[i] <= i && i <= prefix[i] + null_count) continue next;
+            if (prefix[i] <= (i - 1) && (i - 1) <= prefix[i] + null_count) continue next;
         }
 
         errors.add([r, c]);
