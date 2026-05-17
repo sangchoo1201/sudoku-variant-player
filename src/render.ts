@@ -27,7 +27,6 @@ type RenderContext = {
         prism: SVGGElement,
         link: SVGGElement,
         point: SVGGElement,
-        point_alt: SVGGElement,
     },
 }
 
