@@ -14,8 +14,17 @@ const BoardCoordSchema = z.union([
 export type BoardCoord = z.infer<typeof BoardCoordSchema>;
 export const board_coords = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 
+export function is_coord(n: number): n is BoardCoord {
+    return Number.isInteger(n) && 0 <= n && n < 9;
+}
+
 const PositionSchema = z.tuple([BoardCoordSchema, BoardCoordSchema]);
 export type Position = z.infer<typeof PositionSchema>;
+
+export function is_pos(p: [number, number]): p is Position {
+    const [r, c] = p;
+    return is_coord(r) && is_coord(c);
+}
 
 export type Side = "left" | "right" | "top" | "bottom";
 export type PositionExtended =

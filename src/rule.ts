@@ -24,7 +24,7 @@ import {
     type Direction,
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
-    type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule,
+    type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -35,15 +35,6 @@ type CoordinateMappingFunction = (i: number, j: number) => Position;
 
 const adjacent = [[0, -1], [0, 1], [-1, 0], [1, 0]] as const;
 const king_adjacent = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]] as const;
-
-function is_coord(n: number): n is BoardCoord {
-    return Number.isInteger(n) && 0 <= n && n < 9;
-}
-
-function is_pos(p: [number, number]): p is Position {
-    const [r, c] = p;
-    return is_coord(r) && is_coord(c);
-}
 
 function digit_to_coord(digit: Digit): BoardCoord {
     return digit - 1 as BoardCoord;

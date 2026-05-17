@@ -1,20 +1,21 @@
-import type {
-    LinkRule,
-    LotusRule,
-    MetroRule,
-    PrismRule,
-    QuantumRule,
-    RangeRule,
-    ReferenceRule,
-    RootRule,
-    SegmentRule,
-    SequenceRule,
-    TemperatureRule,
-    Rule,
-    RuleID,
-    SideRule,
-    PointRule, VectorRule, StreamRule, PairRule, InversionRule, Position, Direction,
-    TrailRule, DirectionExtended, ProductRule, BridgeRule, ReflexRule,
+import {
+    type LinkRule,
+    type LotusRule,
+    type MetroRule,
+    type PrismRule,
+    type QuantumRule,
+    type RangeRule,
+    type ReferenceRule,
+    type RootRule,
+    type SegmentRule,
+    type SequenceRule,
+    type TemperatureRule,
+    type Rule,
+    type RuleID,
+    type SideRule,
+    type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
+    type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
+    is_pos,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -488,6 +489,55 @@ const reflex_render: Renderer<ReflexRule> = function (ctx: RenderContext, rule: 
     }
 }
 
+const aquarium_render: Renderer<AquariumRule> = function (ctx: RenderContext, rule: AquariumRule) {
+    type Coord = [number, number];
+
+    const encode = ([r, c]: Position): number => r * 10 + c;
+    const is_smaller = ([r1, c1]: Position, [r2, c2]: Position): boolean => (r1 === r2) ? (c1 < c2) : (r1 < r2);
+    const equal_coord = ([r1, c1]: Coord, [r2, c2]: Coord): boolean => r1 === r2 && c1 === c2;
+
+    const directions: Coord[] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+    const first: Coord[] = [[1, 0], [-1, 1], [-2, -1], [0, -2]];
+    const second: Coord[] = [[1, -1], [0, 1], [-2, 0], [-1, -2]];
+
+    const add_delta = ([r, c]: Coord, [dr, dc]: Coord, length: number = 1): Coord => [r + dr * length, c + dc * length];
+
+    const length = rule.render_state.regions.length;
+    for (const [i, region] of rule.render_state.regions.entries()) {
+        const set = new Set<number>(region.map(encode));
+        const start_pos = region.reduce((min, curr) => is_smaller(curr, min) ? curr : min)
+        let pos: Coord = start_pos;
+        let coords: Coord[] = [[pos[0] + 0.5, pos[1] + 0.1]];
+        let dir = 0;
+        const move = (rotate: number, length: number) => {
+            pos = add_delta(pos, directions[dir]);
+            coords.push(add_delta(coords[coords.length - 1], directions[dir], length));
+            dir = (dir + rotate + 4) % 4;
+            coords.push(add_delta(coords[coords.length - 1], directions[dir], length));
+        };
+        do {
+            const next1 = add_delta(pos, first[dir]);
+            const next2 = add_delta(pos, second[dir]);
+            if (!is_pos(next1) || !set.has(encode(next1))) {
+                move(1, 0.4);
+            } else if (!is_pos(next2) || !set.has(encode(next2))) {
+                move(0, 0.5);
+            } else {
+                move(-1, 0.6);
+            }
+        } while (!equal_coord(pos, start_pos));
+        const polygon = generate_polygon(coords.map(([r, c]) => [c, r]));
+        const color = `hsl(${160 + 40 / length * i}, 80%, 50%)`
+        polygon.setAttribute("fill",  color);
+        polygon.setAttribute("fill-opacity", "0.3");
+        polygon.setAttribute("stroke", color);
+        polygon.setAttribute("stroke-width", "0.04");
+        polygon.setAttribute("stroke-dasharray", "0.12 0.08");
+        polygon.setAttribute("stroke-dashoffset", "0.06");
+        ctx.layer_bottom.appendChild(polygon);
+    }
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -591,8 +641,8 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[PD]": (ctx, r) => product_render(ctx, r as ProductRule),
     "[BD]": (ctx, r) => bridge_render(ctx, r as BridgeRule),
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
+    "[AQ]": (ctx, r) => aquarium_render(ctx, r as AquariumRule),
     "[ST]": nothing_render,  // TODO
-    "[AQ]": nothing_render,  // TODO
 };
 
 export function render_all(rules: Rule[]) {
