@@ -455,14 +455,15 @@ const trail_render: Renderer<TrailRule> = function (ctx: RenderContext, rule: Tr
 
 const bridge_render: Renderer<BridgeRule> = function (ctx: RenderContext, rule: BridgeRule) {
     const d = 0.15;
-    for (const row of rule.render_state.start_rows) {
+    const len = rule.render_state.start_rows.length;
+    for (const [i, row] of rule.render_state.start_rows.entries()) {
         const cx = 0, cy = row + 0.5;
         const points: Coordinate[] = [[cx, cy - d], [cx + d, cy], [cx, cy + d], [cx - d, cy]];
         const poly = generate_polygon(points);
-        poly.setAttribute("fill", "rgb(190, 0, 0)");
+        poly.setAttribute("fill", `hsl(${360 / len * i}, 100%, 37.3%)`);
 
         const line = generate_line([0, row - 0.03], [0, row + 1.03]);
-        line.setAttribute("stroke", "rgb(220, 0, 0)");
+        line.setAttribute("stroke", `hsl(${360 / len * i}, 100%, 43.1%)`);
         line.setAttribute("stroke-width", "0.1");
 
         ctx.layer_top.bridge.appendChild(line);
