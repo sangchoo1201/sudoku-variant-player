@@ -961,6 +961,9 @@ const reflex_check: RuleCheckingFunction<ReflexRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
+    const encode = ([r, c]: Position): number => r * 10 + c;
+    const set = new Set<number>(rule.render_state.marked_cells.map(encode));
+
     next: for (const [r, c] of rule.render_state.marked_cells) {
         const v = solving_state.board[r][c].number;
 
@@ -968,7 +971,8 @@ const reflex_check: RuleCheckingFunction<ReflexRule> = function (
         const counts = Array(10).fill(0);
         const neighbors = king_adjacent
             .map(([dr, dc]) => [r + dr, c + dc] as [number, number])
-            .filter(is_pos);
+            .filter(is_pos)
+            .filter(p => set.has(encode(p)));
         for (const [nr, nc] of neighbors) {
             const nv = solving_state.board[nr][nc].number;
             if (nv === null) {
