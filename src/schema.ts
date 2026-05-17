@@ -463,6 +463,14 @@ const AquariumRuleSchema = z.object({
 });
 export type AquariumRule = z.infer<typeof AquariumRuleSchema>;
 
+const MetaRuleSchema = z.object({
+    id: z.literal("[MT]"),
+    render_state: z.object({
+        diamond_cells: z.array(PositionSchema),
+    }),
+});
+export type MetaRule = z.infer<typeof MetaRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -502,6 +510,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     BridgeRuleSchema,
     ReflexRuleSchema,
     AquariumRuleSchema,
+    MetaRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

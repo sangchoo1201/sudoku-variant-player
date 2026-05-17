@@ -15,7 +15,7 @@ import {
     type SideRule,
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
-    is_pos,
+    is_pos, type MetaRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -27,6 +27,7 @@ type RenderContext = {
         prism: SVGGElement,
         link: SVGGElement,
         point: SVGGElement,
+        point_alt: SVGGElement,
     },
 }
 
@@ -538,6 +539,20 @@ const aquarium_render: Renderer<AquariumRule> = function (ctx: RenderContext, ru
     }
 }
 
+const meta_render: Renderer<MetaRule> = function (ctx: RenderContext, rule: MetaRule) {
+    const d = 0.2;
+    for (const pos of rule.render_state.diamond_cells) {
+        const [cx, cy] = pos_to_coord(pos);
+        const points: Coordinate[] = [[cx, cy - d], [cx + d, cy], [cx, cy + d], [cx - d, cy]];
+        const poly = generate_polygon(points);
+        poly.setAttribute("fill", "none");
+        poly.setAttribute("stroke", "rgba(0, 0, 200, 0.5)");
+        poly.setAttribute("stroke-width", "0.02");
+
+        ctx.layer_top.link.appendChild(poly);
+    }
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -642,6 +657,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[BD]": (ctx, r) => bridge_render(ctx, r as BridgeRule),
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[AQ]": (ctx, r) => aquarium_render(ctx, r as AquariumRule),
+    "[MT]": (ctx, r) => meta_render(ctx, r as MetaRule),
     "[ST]": nothing_render,  // TODO
 };
 

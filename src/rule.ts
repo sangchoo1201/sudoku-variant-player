@@ -24,7 +24,7 @@ import {
     type Direction,
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
-    type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord,
+    type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1012,6 +1012,34 @@ const aquarium_check: RuleCheckingFunction<AquariumRule> = function (
     return errors.result();
 }
 
+const meta_check: RuleCheckingFunction<MetaRule> = function (
+    solving_state: SolvingState, rule: MetaRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const positions: Position[][] = Array.from({ length: 10 }, _ => []);
+    let null_count = 0;
+
+    for (const [r, c] of rule.render_state.diamond_cells) {
+        const v = solving_state.board[r][c].number;
+        if (v === null) {
+            null_count++;
+        } else {
+            positions[v].push([r, c]);
+        }
+    }
+
+    for (const i of digits) {
+        const count = positions[i].length;
+        if (count === 0) continue;
+        if (count + null_count < i || i < count) {
+            errors.add_all(positions[i]);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1045,6 +1073,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[BD]": (state, rule) => bridge_check(state, rule as BridgeRule),
     "[EF]": (state, rule) => reflex_check(state, rule as ReflexRule),
     "[AQ]": (state, rule) => aquarium_check(state, rule as AquariumRule),
+    "[MT]": (state, rule) => meta_check(state, rule as MetaRule),
 } as const;
 
 export function check_all(
