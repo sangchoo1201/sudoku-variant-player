@@ -227,7 +227,7 @@ const stream_render: Renderer<StreamRule> = function (ctx: RenderContext, rule: 
         );
         g.setAttribute("opacity", "0.5");
 
-        const d = 0.3, d2 = d / 2;
+        const d = 0.35, d2 = d / 2;
 
         const outside_functions: ((p: Position) => [boolean, Coordinate, Coordinate])[] = [
             ([r, c]) => [r === 0, [c + 0.5, 0.5 + d2], [c + 0.5, 0]],
@@ -240,15 +240,15 @@ const stream_render: Renderer<StreamRule> = function (ctx: RenderContext, rule: 
                 const [condition, coord1, coord2] = outside(pos);
                 if (!condition) continue;
                 const line = generate_line(coord1, coord2);
-                line.setAttribute("stroke", "rgba(94, 234, 234)");
-                line.setAttribute("stroke-width", "0.3");
+                line.setAttribute("stroke", "rgb(97, 217, 245)");
+                line.setAttribute("stroke-width", d.toString());
                 g.appendChild(line);
             }
         }
 
         const poly = generate_polyline(stream.map(pos_to_coord));
-        poly.setAttribute("stroke", "rgba(94, 234, 234)");
-        poly.setAttribute("stroke-width", "0.3");
+        poly.setAttribute("stroke", "rgb(97, 217, 245)");
+        poly.setAttribute("stroke-width", d.toString());
 
         g.appendChild(poly);
         ctx.layer_bottom.appendChild(g);
