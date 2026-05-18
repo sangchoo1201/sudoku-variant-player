@@ -3,7 +3,7 @@ import {
     type BoardState,
     type PuzzleData,
     PuzzleDataSchema,
-    type DirectionExtended, type RuleID,
+    type DirectionExtended, type RuleID, PartialPuzzleDataSchema,
 } from "./schema.ts";
 import {render_all} from "./render.ts";
 import {redirect_puzzle_id, setup_listeners} from "./input.ts";
@@ -311,18 +311,10 @@ function setup_modal(puzzle_data: PuzzleData) {
     title.innerText = `ID: ${puzzle_data.id}`;
     info_text.appendChild(title);
 
-    let has_unknown = false;
-
     for (const rule of puzzle_data.rules) {
         const description = document.createElement('p');
-        const text = rule_description[rule.id]
-        if (!text) {
-            if (!has_unknown) {
-                has_unknown = true;
-                alert("Some variants are currently not updated!");
-            }
-            continue;
-        }
+        const text = rule_description[rule.id];
+        if (!text) continue;
         description.innerText = rule.id + ' ' + text;
         info_text.appendChild(description);
     }
@@ -342,21 +334,24 @@ async function main() {
     const code = url_params.get('code');
     const parsed_data = parse_data(code);
     const result = PuzzleDataSchema.safeParse(parsed_data);
+    const partial_result = PartialPuzzleDataSchema.safeParse(parsed_data);
     if (!result.success && code !== null) {
-        alert("invalid code or variant not updated");
-    }
-    const puzzle_data: PuzzleData = result.success ? result.data : default_data;
-    let solving_state: SolvingState;
-    if (puzzle_data.solving_state !== undefined) {
-        solving_state = puzzle_data.solving_state;
-    } else {
-        const state = load_state(puzzle_data.id)
-        if (state !== null) {
-            solving_state = state;
+        if (!partial_result.success) {
+            console.log(partial_result.error);
+            alert("invalid code");
         } else {
-            solving_state = generate_default_solving_state(puzzle_data);
-            if (puzzle_data.id !== "#00000") open_info();
+            alert("Some variants are currently not updated!");
         }
+    }
+    const puzzle_data: PuzzleData = result.success ? result.data :
+        (partial_result.success ? partial_result.data as PuzzleData : default_data);
+    let solving_state: SolvingState;
+    const state = load_state(puzzle_data.id)
+    if (state !== null) {
+        solving_state = state;
+    } else {
+        solving_state = generate_default_solving_state(puzzle_data);
+        if (puzzle_data.id !== "#00000") open_info();
     }
 
     const [cell_map, left, right, top, bottom] = setup_grid(puzzle_data);

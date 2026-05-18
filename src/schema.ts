@@ -532,9 +532,15 @@ export type SideRule = SequenceRule | QuantumRule | RangeRule | ProductRule;
 export const PuzzleDataSchema = z.object({
     id: z.string(),
     difficulty: z.union([z.number(), z.literal("?")]),
-    board: z.array(z.array(z.union([DigitSchema, z.literal(0)])).length(9)).length(9),
+    board: z.array(z.array(DigitOrZeroSchema).length(9)).length(9),
     rules: z.array(RuleSchema),
-    solving_state: SolvingStateSchema.optional()
 });
 
 export type PuzzleData = z.infer<typeof PuzzleDataSchema>;
+
+export const PartialPuzzleDataSchema = z.object({
+    id: z.string(),
+    difficulty: z.union([z.number(), z.literal("?")]),
+    board: z.array(z.array(DigitOrZeroSchema).length(9)).length(9),
+    rules: z.array(z.union([RuleSchema, z.object({ id: z.string() })])),
+});
