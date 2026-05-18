@@ -15,7 +15,7 @@ import {
     type SideRule,
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
-    is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule,
+    is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -31,7 +31,7 @@ type RenderContext = {
 }
 
 type PureRenderer = (ctx: RenderContext) => void;
-type Renderer<T> = (ctx: RenderContext, rule: T) => void;
+type Renderer<T, A extends unknown[] = []> = (ctx: RenderContext, rule: T, ...args: A) => void;
 
 type Coordinate = [number, number];
 
@@ -183,13 +183,16 @@ const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: Link
     }
 }
 
-const lotus_render: Renderer<LotusRule> = function (ctx: RenderContext, rule: LotusRule) {
+const lotus_render: Renderer<LotusRule, [string?]> = function (
+    ctx: RenderContext, rule: LotusRule, color: string = "rgb(189, 235, 107)",
+) {
     for (const [r, c] of rule.render_state.cells) {
         const circle = generate_circle(pos_to_coord([r, c]));
 
         circle.setAttribute("r", "0.3");
-        circle.setAttribute("fill", "rgba(189, 235, 107, 0.5)");
-        circle.setAttribute("stroke", "rgba(189, 235, 107, 1)");
+        circle.setAttribute("fill", color);
+        circle.setAttribute("fill-opacity", "0.5");
+        circle.setAttribute("stroke", color);
         circle.setAttribute("stroke-width", "0.05");
 
         ctx.layer_bottom.appendChild(circle);
@@ -575,6 +578,15 @@ const prism_prime_render: Renderer<PrismPrimeRule> = function (ctx: RenderContex
     prism_render(ctx, prism_rule);
 }
 
+const lotus_prime_render: Renderer<LotusPrimeRule> = function (ctx: RenderContext, rule: LotusPrimeRule) {
+    const lotus_rule: LotusRule = {
+        id: "[LO]",
+        render_state: rule.render_state,
+    };
+
+    lotus_render(ctx, lotus_rule, "rgb(40,200,222)");
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -682,6 +694,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[MT]": (ctx, r) => meta_render(ctx, r as MetaRule),
     "[LK']": (ctx, r) => link_prime_render(ctx, r as LinkPrimeRule),
     "[PR']": (ctx, r) => prism_prime_render(ctx, r as PrismPrimeRule),
+    "[LO']": (ctx, r) => lotus_prime_render(ctx, r as LotusPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 

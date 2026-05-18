@@ -305,6 +305,7 @@ const rule_description: Record<RuleID, string> = {
 
     "[PR']": "프리즘': 빨간 육각형 두 개를 사이에 둔 세 숫자를 세 자리 수로 읽으면 소수이고, 파란 육각형 두 개를 사이에 둔 세 숫자를 세 자리 수로 읽으면 제곱수입니다. " +
         "가로는 왼쪽부터, 세로는 위쪽부터 읽습니다.",
+    "[LO']": "로터스': 동그라미 표시 된 칸의 숫자는 상하좌우로 인접한 칸의 숫자들의 산술평균과 같습니다. (소숫점 버림)",
 }
 
 const info_text = document.getElementById('info-text')!;

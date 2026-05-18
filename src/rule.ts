@@ -25,7 +25,7 @@ import {
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
-    type LinkPrimeRule, type PrismPrimeRule,
+    type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1113,6 +1113,37 @@ const prism_prime_check: RuleCheckingFunction<PrismPrimeRule> = function (
     return errors.result();
 }
 
+const lotus_prime_check: RuleCheckingFunction<LotusPrimeRule> = function (
+    solving_state: SolvingState, rule: LotusPrimeRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [r, c] of rule.render_state.cells) {
+        const v = solving_state.board[r][c].number;
+        const min = v ?? 1, max = (v ?? 9) + 1;
+
+        const neighbors: Position[] = adjacent
+            .map(([dr, dc]) => [r + dr, c + dc] as [number, number])
+            .filter(is_pos);
+        const length = neighbors.length;
+        let null_count = 0, sum = 0;
+        for (const [nr, nc] of neighbors) {
+            const nv = solving_state.board[nr][nc].number;
+            if (nv === null) {
+                null_count++;
+            } else {
+                sum += nv;
+            }
+        }
+
+        if (sum + null_count * 9 < min * length || max * length <= sum + null_count) {
+            errors.add([r, c]);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1149,6 +1180,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[MT]": (state, rule) => meta_check(state, rule as MetaRule),
     "[LK']": (state, rule) => link_prime_check(state, rule as LinkPrimeRule),
     "[PR']": (state, rule) => prism_prime_check(state, rule as PrismPrimeRule),
+    "[LO']": (state, rule) => lotus_prime_check(state, rule as LotusPrimeRule),
 } as const;
 
 export function check_all(

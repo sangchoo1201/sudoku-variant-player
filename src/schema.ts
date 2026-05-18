@@ -499,6 +499,14 @@ const PrismPrimeRuleSchema = z.object({
 });
 export type PrismPrimeRule = z.infer<typeof PrismPrimeRuleSchema>;
 
+const LotusPrimeRuleSchema = z.object({
+    id: z.literal("[LO']"),
+    render_state: z.object({
+        cells: z.array(PositionSchema),
+    }),
+});
+export type LotusPrimeRule = z.infer<typeof LotusPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -542,6 +550,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     LinkPrimeRuleSchema,
 
     PrismPrimeRuleSchema,
+    LotusPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
