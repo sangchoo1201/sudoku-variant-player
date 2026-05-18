@@ -1,11 +1,11 @@
-import {type BoardCoord, type Position, position_generator, type SolvingState} from "./schema.ts";
+import {type BoardCoord, type Position, position_generator} from "./schema.ts";
 import {
     add_selection, apply_value, clear_value, cycle_default_input_mode,
     get_last_cell, get_single_selection_or_null,
     InputMode, type InputMode as InputModeType, is_selected,
     remove_selection, reset_selection, selection_to_text,
-    set_input_mode, set_last_cell, set_default_input_mode,
-    show_current_input_mode, open_info, close_info, undo, redo,
+    set_input_mode, set_default_input_mode,
+    show_current_input_mode, open_info, close_info, undo, redo, double_click, get_selection_size, select_all_value,
 } from "./cell.ts";
 
 const DragMode = {
@@ -53,9 +53,7 @@ function config_input_mode() {
     show_current_input_mode();
 }
 
-export function setup_listeners(
-    solving_state: SolvingState,
-) {
+export function setup_listeners() {
     for (const [input_mode, button_id] of [
         [InputMode.Normal, 'button-normal'],
         [InputMode.Corner, 'button-corner'],
@@ -71,7 +69,11 @@ export function setup_listeners(
     for (let i = 0; i <= 9; i++) {
         const button = document.querySelector<HTMLButtonElement>(`#button-${i}`)!;
         button.addEventListener('pointerdown', () => {
-            apply_value(i.toString());
+            if (get_selection_size() === 0) {
+                select_all_value(i.toString());
+            } else {
+                apply_value(i.toString());
+            }
         });
     }
 
@@ -144,7 +146,9 @@ export function setup_listeners(
         config_input_mode();
 
         if (code === 'Escape') {
-            close_info();
+            e.preventDefault();
+            const closed = close_info();
+            if (!closed) reset_selection();
             return;
         }
 
@@ -283,19 +287,7 @@ export function setup_listeners(
 
         const r = Number(target.dataset.row) as BoardCoord;
         const c = Number(target.dataset.col) as BoardCoord;
-
-        const value = solving_state.board[r][c].number;
-
-        if (value === null) return; // 빈칸은 무시
-
-        reset_selection();
-
-        for (const [i, j] of position_generator()) {
-            if (solving_state.board[i][j].number === value) {
-                add_selection([i, j], false);
-            }
-        }
-        set_last_cell([r, c]);
+        double_click([r, c]);
     });
 
     window.addEventListener('pointermove', (e) => {

@@ -362,7 +362,7 @@ async function main() {
     const [cell_map, left, right, top, bottom] = setup_grid(puzzle_data);
     init_all(cell_map, left, right, top, bottom, solving_state, puzzle_data.rules, puzzle_data.id);
     render_all(puzzle_data.rules);
-    setup_listeners(solving_state);
+    setup_listeners();
     setup_modal(puzzle_data);
     for (const rule of puzzle_data.rules) {
         if (rule.id === "[TR]") {

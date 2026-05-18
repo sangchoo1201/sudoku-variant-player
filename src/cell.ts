@@ -171,8 +171,10 @@ export function open_info(): void {
     modal.classList.add('show-modal');
 }
 
-export function close_info(): void {
+export function close_info(): boolean {
+    const shown = modal.classList.contains('show-modal');
     modal.classList.remove('show-modal');
+    return shown;
 }
 
 export function show_current_input_mode() {
@@ -218,6 +220,10 @@ export function get_single_selection_or_null(): Position | null {
     return decode(k);
 }
 
+export function get_selection_size(): number {
+    return selected.size;
+}
+
 export function get_last_cell(): HTMLDivElement | null {
     return last_cell;
 }
@@ -260,6 +266,69 @@ export function reset_selection() {
         cell.classList.remove('selected-last');
     }
     last_cell = null;
+}
+
+export function double_click([r, c]: Position) {
+    let value: string = "";
+
+    const mode = get_input_mode();
+    const cell = solving_state.board[r][c];
+
+    if (mode === InputMode.Normal) {
+        if (cell.number === null) return;
+        value = cell.number.toString();
+    } else {
+        let set: Record<string, true>;
+        if (mode === InputMode.Color) {
+            set = cell.color;
+        } else if (!cell.fixed && cell.number === null) {
+            set = cell[mode];
+        } else {
+            return;
+        }
+        for (const s in set) {
+            value += s;
+        }
+    }
+
+    select_all_value(value);
+    set_last_cell([r, c]);
+}
+
+export function select_all_value(value: string) {
+    reset_selection();
+
+    const mode = get_input_mode();
+    if (mode === InputMode.Normal) {
+        const number = Number(value);
+        for (const [i, j] of position_generator()) {
+            if (solving_state.board[i][j].number === number) {
+                add_selection([i, j], false);
+            }
+        }
+    } else {
+        for (const [i, j] of position_generator()) {
+            const cell = solving_state.board[i][j];
+            let set: Record<string, true>;
+            if (mode === InputMode.Color) {
+                set = cell.color;
+            } else if (!cell.fixed) {
+                set = cell[mode];
+            } else {
+                continue;
+            }
+            let has_all = true;
+            for (const digit of value) {
+                if (set[digit] === undefined) {
+                    has_all = false;
+                    break;
+                }
+            }
+            if (has_all) {
+                add_selection([i, j], false);
+            }
+        }
+    }
 }
 
 function is_common(value: string) {
