@@ -310,9 +310,19 @@ function setup_modal(puzzle_data: PuzzleData) {
     title.innerText = `ID: ${puzzle_data.id}`;
     info_text.appendChild(title);
 
+    let has_unknown = false;
+
     for (const rule of puzzle_data.rules) {
         const description = document.createElement('p');
-        description.innerText = rule.id + ' ' + rule_description[rule.id];
+        const text = rule_description[rule.id]
+        if (!text) {
+            if (!has_unknown) {
+                has_unknown = true;
+                alert("Some variants are currently not updated!");
+            }
+            continue;
+        }
+        description.innerText = rule.id + ' ' + text;
         info_text.appendChild(description);
     }
 }

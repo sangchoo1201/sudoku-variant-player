@@ -1084,7 +1084,9 @@ export function check_all(
 
     for (const rule of rules) {
         const id = rule.id;
-        const [c, e] = rule_checks[id](solving_state, rule);
+        const check = rule_checks[id];
+        if (!check) continue;
+        const [c, e] = check(solving_state, rule);
         if (!c) correct = false;
         errors[id] = e;
     }
