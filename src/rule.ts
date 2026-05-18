@@ -25,7 +25,7 @@ import {
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
-    type LinkPrimeRule,
+    type LinkPrimeRule, type PrismPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1074,6 +1074,45 @@ const link_prime_check: RuleCheckingFunction<LinkPrimeRule> = function (
     return errors.result();
 }
 
+const triple_prime_numbers = new Set<number>([
+    113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227,
+    229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 311, 313, 317, 331, 337, 347, 349,
+    353, 359, 367, 373, 379, 383, 389, 397, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479,
+    487, 491, 499, 521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 613, 617, 619, 631, 641,
+    643, 647, 653, 659, 661, 673, 677, 683, 691, 719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787,
+    797, 811, 821, 823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 911, 919, 929, 937, 941,
+    947, 953, 967, 971, 977, 983, 991, 997,
+]);
+const triple_square_numbers = new Set<number>([
+    121, 144, 169, 196, 225, 256, 289, 324, 361, 441, 484, 529, 576, 625, 676, 729, 784, 841, 961,
+]);
+
+const prism_prime_check: RuleCheckingFunction<PrismPrimeRule> = function (
+    solving_state: SolvingState, rule: PrismPrimeRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [r1, c1, r2, c2, r3, c3, type] of rule.render_state.triplets) {
+        const set = type ? triple_prime_numbers : triple_square_numbers;
+        const v1 = solving_state.board[r1][c1].number;
+        const v2 = solving_state.board[r2][c2].number;
+        const v3 = solving_state.board[r3][c3].number;
+        let exist = false;
+        for (const a of (v1 === null ? digits : [v1])) {
+            for (const b of (v2 === null ? digits : [v2])) {
+                for (const c of (v3 === null ? digits : [v3])) {
+                    if (set.has(a * 100 + b * 10 + c)) exist = true;
+                }
+            }
+        }
+        if (!exist) {
+            errors.add_all([[r1, c1], [r2, c2], [r3, c3]]);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1109,6 +1148,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[AQ]": (state, rule) => aquarium_check(state, rule as AquariumRule),
     "[MT]": (state, rule) => meta_check(state, rule as MetaRule),
     "[LK']": (state, rule) => link_prime_check(state, rule as LinkPrimeRule),
+    "[PR']": (state, rule) => prism_prime_check(state, rule as PrismPrimeRule),
 } as const;
 
 export function check_all(

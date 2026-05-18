@@ -15,7 +15,7 @@ import {
     type SideRule,
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
-    is_pos, type MetaRule,
+    is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -552,6 +552,29 @@ const meta_render: Renderer<MetaRule> = function (ctx: RenderContext, rule: Meta
     }
 }
 
+const link_prime_render: Renderer<LinkPrimeRule> = function (ctx: RenderContext, rule: LinkPrimeRule) {
+    const link_rule: LinkRule = {
+        id: "[LK]",
+        render_state: rule.render_state,
+    }
+
+    link_render(ctx, link_rule);
+}
+
+const prism_prime_render: Renderer<PrismPrimeRule> = function (ctx: RenderContext, rule: PrismPrimeRule) {
+    const prism_rule: PrismRule = {
+        id: "[PR]",
+        render_state: { edges: [] },
+    };
+
+    for (const [r1, c1, r2, c2, r3, c3, type] of rule.render_state.triplets) {
+        prism_rule.render_state.edges.push([r1, c1, r2, c2, type]);
+        prism_rule.render_state.edges.push([r2, c2, r3, c3, type]);
+    }
+
+    prism_render(ctx, prism_rule);
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -657,7 +680,8 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[AQ]": (ctx, r) => aquarium_render(ctx, r as AquariumRule),
     "[MT]": (ctx, r) => meta_render(ctx, r as MetaRule),
-    "[LK']": (ctx, r) => link_render(ctx, r as LinkRule),
+    "[LK']": (ctx, r) => link_prime_render(ctx, r as LinkPrimeRule),
+    "[PR']": (ctx, r) => prism_prime_render(ctx, r as PrismPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 

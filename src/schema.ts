@@ -481,6 +481,24 @@ const LinkPrimeRuleSchema = z.object({
 });
 export type LinkPrimeRule = z.infer<typeof LinkPrimeRuleSchema>;
 
+const PrismPrimeRuleSchema = z.object({
+    id: z.literal("[PR']"),
+    render_state: z.object({
+        triplets: z.array(
+            z.tuple([
+                BoardCoordSchema,
+                BoardCoordSchema,
+                BoardCoordSchema,
+                BoardCoordSchema,
+                BoardCoordSchema,
+                BoardCoordSchema,
+                z.boolean(),
+            ])
+        ),
+    }),
+});
+export type PrismPrimeRule = z.infer<typeof PrismPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -522,6 +540,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     AquariumRuleSchema,
     MetaRuleSchema,
     LinkPrimeRuleSchema,
+
+    PrismPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
