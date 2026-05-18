@@ -25,6 +25,7 @@ import {
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
+    type LinkPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1040,6 +1041,39 @@ const meta_check: RuleCheckingFunction<MetaRule> = function (
     return errors.result();
 }
 
+const link_prime_check: RuleCheckingFunction<LinkPrimeRule> = function (
+    solving_state: SolvingState, rule: LinkPrimeRule,
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const minmax = (a: number, b: number): [number, number] => [Math.min(a, b), Math.max(a, b)];
+    const encode = ([r1, c1]: Position, [r2, c2]: Position): number => {
+        const [a, b] = minmax(r1, r2);
+        const [c, d] = minmax(c1, c2);
+        return a * 1000 + b * 100 + c * 10 + d;
+    }
+    const set = new Set<number>();
+
+    for (const [p1, p2] of rule.render_state.edges) {
+        set.add(encode(p1, p2));
+    }
+
+    for (const [r1, c1] of position_generator()) {
+        for (const [r2, c2] of ([[r1, c1 + 1], [r1 + 1, c1]] as [number, number][]).filter(is_pos)) {
+            const v1 = solving_state.board[r1][c1].number;
+            const v2 = solving_state.board[r2][c2].number;
+            if (v1 === null || v2 === null) continue;
+            const is_link = Math.abs(v1 - v2) === 1;
+            if (is_link !== set.has(encode([r1, c1], [r2, c2]))) {
+                errors.add([r1, c1]);
+                errors.add([r2, c2]);
+            }
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1074,6 +1108,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[EF]": (state, rule) => reflex_check(state, rule as ReflexRule),
     "[AQ]": (state, rule) => aquarium_check(state, rule as AquariumRule),
     "[MT]": (state, rule) => meta_check(state, rule as MetaRule),
+    "[LK']": (state, rule) => link_prime_check(state, rule as LinkPrimeRule),
 } as const;
 
 export function check_all(

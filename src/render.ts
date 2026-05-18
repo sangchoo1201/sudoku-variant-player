@@ -657,6 +657,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[AQ]": (ctx, r) => aquarium_render(ctx, r as AquariumRule),
     "[MT]": (ctx, r) => meta_render(ctx, r as MetaRule),
+    "[LK']": (ctx, r) => link_render(ctx, r as LinkRule),
     "[ST]": nothing_render,  // TODO
 };
 

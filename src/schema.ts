@@ -471,6 +471,16 @@ const MetaRuleSchema = z.object({
 });
 export type MetaRule = z.infer<typeof MetaRuleSchema>;
 
+const LinkPrimeRuleSchema = z.object({
+    id: z.literal("[LK']"),
+    render_state: z.object({
+        edges: z.array(
+            z.tuple([PositionSchema, PositionSchema])
+        ),
+    }),
+});
+export type LinkPrimeRule = z.infer<typeof LinkPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -511,6 +521,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     ReflexRuleSchema,
     AquariumRuleSchema,
     MetaRuleSchema,
+    LinkPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
