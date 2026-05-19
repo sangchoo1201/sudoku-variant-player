@@ -16,7 +16,7 @@ import {
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
     is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
-    type SequencePrimeRule,
+    type SequencePrimeRule, type TrailPrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -597,6 +597,15 @@ const root_prime_render: Renderer<RootPrimeRule> = function (ctx: RenderContext,
     root_render(ctx, root_rule);
 }
 
+const trail_prime_render: Renderer<TrailPrimeRule> = function (ctx: RenderContext, rule: TrailPrimeRule) {
+    const trail_rule: TrailRule = {
+        id: "[TR]",
+        render_state: rule.render_state,
+    };
+
+    trail_render(ctx, trail_rule);
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -711,6 +720,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[LO']": (ctx, r) => lotus_prime_render(ctx, r as LotusPrimeRule),
     "[RT']": (ctx, r) => root_prime_render(ctx, r as RootPrimeRule),
     "[SQ']": (ctx, r) => sequence_prime_render(ctx, r as SequencePrimeRule),
+    "[TR']": (ctx, r) => trail_prime_render(ctx, r as TrailPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 

@@ -535,6 +535,15 @@ const SequencePrimeRuleSchema = z.object({
 });
 export type SequencePrimeRule = z.infer<typeof SequencePrimeRuleSchema>;
 
+const TrailPrimeRuleSchema = z.object({
+    id: z.literal("[TR']"),
+    render_state: z.object({
+        start: PositionSchema,
+        end: PositionSchema,
+    }),
+});
+export type TrailPrimeRule = z.infer<typeof TrailPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -582,6 +591,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     QuadPrimeRuleSchema,
     RootPrimeRuleSchema,
     SequencePrimeRuleSchema,
+
+    TrailPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

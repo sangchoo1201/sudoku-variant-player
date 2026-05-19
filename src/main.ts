@@ -310,6 +310,9 @@ const rule_description: Record<RuleID, string> = {
     "[RT']": "루트': 회색 숫자가 표시된 칸에서 가장 먼 같은 숫자까지의 거리는 표시된 값과 같습니다.",
     "[SQ']": "시퀀스': 보드 바깥에 주어진 적색 문자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다. L은 1-3, M은 4-6, H는 7-9를 대신합니다. " +
         "(보드 바깥의 문자는 다른 규칙들과 무관합니다.)",
+
+    "[TR']": "트레일': 청색 원이 그려진 칸에서 시작해 주황색 원이 그려진 칸에서 끝나는, 상하좌우로 이동하며 … → 1 → 2 → … → 8 → 9 → 1 → … 순서를 따르는, " +
+        "시작점과 끝점을 제외하면 같은 칸에서 만나지 않는 두 개의 경로가 존재합니다.",
 }
 
 const info_text = document.getElementById('info-text')!;
@@ -369,7 +372,10 @@ async function main() {
     setup_modal(puzzle_data);
     for (const rule of puzzle_data.rules) {
         if (rule.id === "[TR]") {
-            trail_sat_init(rule.render_state.start, rule.render_state.end);
+            trail_sat_init(rule.render_state.start, rule.render_state.end, false);
+        }
+        if (rule.id === "[TR']") {
+            trail_sat_init(rule.render_state.start, rule.render_state.end, true);
         }
     }
     update_all();
