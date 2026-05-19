@@ -25,7 +25,7 @@ import {
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
-    type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule,
+    type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1176,6 +1176,36 @@ const root_prime_check: RuleCheckingFunction<RootPrimeRule> = function (
     return root_check(solving_state, root_rule, true);
 }
 
+const sequence_prime_check: RuleCheckingFunction<SequencePrimeRule> = function (
+    solving_state: SolvingState, rule: SequencePrimeRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const sets: Record<"L" | "M" | "H", Set<Digit>> = {
+        L: new Set<Digit>([1, 2, 3]),
+        M: new Set<Digit>([4, 5, 6]),
+        H: new Set<Digit>([7, 8, 9]),
+    };
+
+    for (const [direction, index, sequence] of rule.render_state.side_hints) {
+        const get_pos = generate_get_pos(direction, index);
+
+        let j = 0;
+        for (const i of board_coords) {
+            const [r, c] = get_pos(i);
+            const v = solving_state.board[r][c].number;
+            if (v === null || sets[sequence[j]].has(v)) j++;
+            if (j >= sequence.length) break;
+        }
+
+        if (j !== sequence.length) {
+            errors.add_direction(direction, index);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1215,6 +1245,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[PR']": (state, rule) => prism_prime_check(state, rule as PrismPrimeRule),
     "[LO']": (state, rule) => lotus_prime_check(state, rule as LotusPrimeRule),
     "[RT']": (state, rule) => root_prime_check(state, rule as RootPrimeRule),
+    "[SQ']": (state, rule) => sequence_prime_check(state, rule as SequencePrimeRule),
 } as const;
 
 export function check_all(

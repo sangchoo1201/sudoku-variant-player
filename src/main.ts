@@ -125,7 +125,7 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
     } as const;
 
     for (const rule of puzzle_data.rules) {
-        if (rule.id === "[QT]" || rule.id === "[RG]" || rule.id === "[SQ]") {
+        if (rule.id === "[QT]" || rule.id === "[RG]" || rule.id === "[SQ]" || rule.id === "[SQ']") {
             for (const [dir, _idx, numbers] of rule.render_state.side_hints) {
                 mx_lengths[dir] = Math.max(mx_lengths[dir], numbers.length);
             }
@@ -308,6 +308,8 @@ const rule_description: Record<RuleID, string> = {
     "[LO']": "로터스': 동그라미 표시 된 칸의 숫자는 상하좌우로 인접한 칸의 숫자들의 산술평균과 같습니다. (소숫점 버림)",
     "[QD']": "쿼드': 어떤 2×2 영역을 잡아도, 4개 숫자의 합이 3의 배수가 아닙니다.",
     "[RT']": "루트': 회색 숫자가 표시된 칸에서 가장 먼 같은 숫자까지의 거리는 표시된 값과 같습니다.",
+    "[SQ']": "시퀀스': 보드 바깥에 주어진 적색 문자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다. L은 1-3, M은 4-6, H는 7-9를 대신합니다. " +
+        "(보드 바깥의 문자는 다른 규칙들과 무관합니다.)",
 }
 
 const info_text = document.getElementById('info-text')!;

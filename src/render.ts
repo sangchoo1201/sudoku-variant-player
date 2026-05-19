@@ -16,6 +16,7 @@ import {
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
     is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
+    type SequencePrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -668,6 +669,9 @@ const range_render: Renderer<RangeRule> = (ctx: RenderContext, rule: RangeRule) 
 const product_render: Renderer<ProductRule> = (ctx: RenderContext, rule: ProductRule) =>
     side_render(ctx, rule, "rgb(127, 52, 0)");
 
+const sequence_prime_render: Renderer<SequencePrimeRule> = (ctx: RenderContext, rule: SequencePrimeRule) =>
+    side_render(ctx, rule, "red");
+
 const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[Sudoku]": sudoku_render,
     "[R]": row_render,
@@ -706,6 +710,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[PR']": (ctx, r) => prism_prime_render(ctx, r as PrismPrimeRule),
     "[LO']": (ctx, r) => lotus_prime_render(ctx, r as LotusPrimeRule),
     "[RT']": (ctx, r) => root_prime_render(ctx, r as RootPrimeRule),
+    "[SQ']": (ctx, r) => sequence_prime_render(ctx, r as SequencePrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 

@@ -521,6 +521,20 @@ const RootPrimeRuleSchema = z.object({
 });
 export type RootPrimeRule = z.infer<typeof RootPrimeRuleSchema>;
 
+const SequencePrimeRuleSchema = z.object({
+    id: z.literal("[SQ']"),
+    render_state: z.object({
+        side_hints: z.array(
+            z.tuple([
+                DirectionSchema,
+                BoardCoordSchema,
+                z.array(z.enum(["L", "M", "H"])),
+            ])
+        ),
+    }),
+});
+export type SequencePrimeRule = z.infer<typeof SequencePrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -567,12 +581,13 @@ const RuleSchema = z.discriminatedUnion("id", [
     LotusPrimeRuleSchema,
     QuadPrimeRuleSchema,
     RootPrimeRuleSchema,
+    SequencePrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
 export type RuleID = z.infer<typeof RuleSchema>['id'];
 
-export type SideRule = SequenceRule | QuantumRule | RangeRule | ProductRule;
+export type SideRule = SequenceRule | QuantumRule | RangeRule | ProductRule | SequencePrimeRule;
 
 export const PuzzleDataSchema = z.object({
     id: z.string(),
