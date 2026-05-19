@@ -1173,7 +1173,7 @@ const root_prime_check: RuleCheckingFunction<RootPrimeRule> = function (
         render_state: rule.render_state,
     };
 
-    return root_check(solving_state, root_rule);
+    return root_check(solving_state, root_rule, true);
 }
 
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
