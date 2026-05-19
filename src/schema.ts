@@ -507,6 +507,10 @@ const LotusPrimeRuleSchema = z.object({
 });
 export type LotusPrimeRule = z.infer<typeof LotusPrimeRuleSchema>;
 
+const QuadPrimeRuleSchema = z.object({
+    id: z.literal("[QD']"),
+});
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -551,6 +555,7 @@ const RuleSchema = z.discriminatedUnion("id", [
 
     PrismPrimeRuleSchema,
     LotusPrimeRuleSchema,
+    QuadPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

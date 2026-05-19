@@ -1144,6 +1144,25 @@ const lotus_prime_check: RuleCheckingFunction<LotusPrimeRule> = function (
     return errors.result();
 }
 
+const quad_prime_check: PureCheckingFunction = function (solving_state: SolvingState): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    next: for (const [r, c] of position_generator([0, 0], [7, 7])) {
+        const quad = [[r, c], [r, c + 1], [r + 1, c], [r + 1, c + 1]] as Position[];
+        let sum = 0;
+        for (const [nr, nc] of quad) {
+            const nv = solving_state.board[nr][nc].number;
+            if (nv === null) continue next;
+            sum += nv;
+        }
+        if (sum % 3 === 0) {
+            errors.add_all(quad);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1155,6 +1174,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[TP]": triplet_check,
     "[EP]": epsilon_check,
     "[BP]": bumper_check,
+    "[QD']": quad_prime_check,
     "[SG]": (state, rule) => segment_check(state, rule as SegmentRule),
     "[LK]": (state, rule) => link_check(state, rule as LinkRule),
     "[LO]": (state, rule) => lotus_check(state, rule as LotusRule),
