@@ -154,8 +154,8 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
 
     const cx = (4.5 + side_size["ROW_LEFT"]) / total_width_size;
     const cy = (4.5 + side_size["COL_TOP"]) / total_height_size;
-    grid.style.top = `${cx * 100}%`;
-    grid.style.left = `${cy * 100}%`;
+    grid.style.left = `${cx * 100}%`;
+    grid.style.top = `${cy * 100}%`;
 
     for (const [side_clue, direction] of [
         [left_clue, "ROW_LEFT"],
