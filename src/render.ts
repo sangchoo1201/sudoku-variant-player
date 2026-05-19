@@ -15,7 +15,7 @@ import {
     type SideRule,
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
-    is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule,
+    is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -31,7 +31,7 @@ type RenderContext = {
 }
 
 type PureRenderer = (ctx: RenderContext) => void;
-type Renderer<T, A extends unknown[] = []> = (ctx: RenderContext, rule: T, ...args: A) => void;
+type Renderer<T extends Rule, A extends unknown[] = []> = (ctx: RenderContext, rule: T, ...args: A) => void;
 
 type Coordinate = [number, number];
 
@@ -587,6 +587,15 @@ const lotus_prime_render: Renderer<LotusPrimeRule> = function (ctx: RenderContex
     lotus_render(ctx, lotus_rule, "rgb(40,200,222)");
 }
 
+const root_prime_render: Renderer<RootPrimeRule> = function (ctx: RenderContext, rule: RootPrimeRule) {
+    const root_rule: RootRule = {
+        id: "[RT]",
+        render_state: rule.render_state,
+    };
+
+    root_render(ctx, root_rule);
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -696,6 +705,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[LK']": (ctx, r) => link_prime_render(ctx, r as LinkPrimeRule),
     "[PR']": (ctx, r) => prism_prime_render(ctx, r as PrismPrimeRule),
     "[LO']": (ctx, r) => lotus_prime_render(ctx, r as LotusPrimeRule),
+    "[RT']": (ctx, r) => root_prime_render(ctx, r as RootPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 

@@ -511,6 +511,16 @@ const QuadPrimeRuleSchema = z.object({
     id: z.literal("[QD']"),
 });
 
+const RootPrimeRuleSchema = z.object({
+    id: z.literal("[RT']"),
+    render_state: z.object({
+        cells: z.array(
+            z.tuple([BoardCoordSchema, BoardCoordSchema, z.int()])
+        ),
+    }),
+});
+export type RootPrimeRule = z.infer<typeof RootPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -556,6 +566,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     PrismPrimeRuleSchema,
     LotusPrimeRuleSchema,
     QuadPrimeRuleSchema,
+    RootPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

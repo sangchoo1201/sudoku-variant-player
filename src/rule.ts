@@ -25,13 +25,14 @@ import {
     type Digit,
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
-    type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule,
+    type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
 type RuleCheckingResult = [true, []] | [false, PositionExtended[]];
 type PureCheckingFunction = (solving_state: SolvingState) => RuleCheckingResult;
-type RuleCheckingFunction<T extends Rule> = (solving_state: SolvingState, rule: T) => RuleCheckingResult;
+type RuleCheckingFunction<T extends Rule, A extends unknown[] = []> =
+    (solving_state: SolvingState, rule: T, ...args: A) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
 
 const adjacent = [[0, -1], [0, 1], [-1, 0], [1, 0]] as const;
@@ -478,8 +479,8 @@ const temperature_check: RuleCheckingFunction<TemperatureRule> = function (
     return errors.result();
 }
 
-const root_check: RuleCheckingFunction<RootRule> = function (
-    solving_state: SolvingState, rule: RootRule
+const root_check: RuleCheckingFunction<RootRule, [boolean?]> = function (
+    solving_state: SolvingState, rule: RootRule, prime: boolean = false,
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
@@ -487,18 +488,19 @@ const root_check: RuleCheckingFunction<RootRule> = function (
         const value = solving_state.board[r][c].number;
         if (value === null) continue;
 
-        let has_exact = false, has_close = false;
+        let has_exact = false, has_close = false, has_far = false;
         for (let nr = 0; nr < 9; nr++) {
             for (let nc = 0; nc < 9; nc++) {
                 const d = (r - nr) ** 2 + (c - nc) ** 2;
-                if (d > distance || d === 0) continue;
+                if (d === 0) continue;
                 const v = solving_state.board[nr][nc].number;
+                if (d > distance && v === value) has_far = true;
                 if (d === distance && (v === null || v === value)) has_exact = true;
                 if (d < distance && v === value) has_close = true;
             }
         }
 
-        if (!has_exact || has_close) {
+        if (!has_exact || (prime ? has_far : has_close)) {
             errors.add([r, c]);
         }
     }
@@ -1163,6 +1165,17 @@ const quad_prime_check: PureCheckingFunction = function (solving_state: SolvingS
     return errors.result();
 }
 
+const root_prime_check: RuleCheckingFunction<RootPrimeRule> = function (
+    solving_state: SolvingState, rule: RootPrimeRule,
+): RuleCheckingResult {
+    const root_rule: RootRule = {
+        id: "[RT]",
+        render_state: rule.render_state,
+    };
+
+    return root_check(solving_state, root_rule);
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1201,6 +1214,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[LK']": (state, rule) => link_prime_check(state, rule as LinkPrimeRule),
     "[PR']": (state, rule) => prism_prime_check(state, rule as PrismPrimeRule),
     "[LO']": (state, rule) => lotus_prime_check(state, rule as LotusPrimeRule),
+    "[RT']": (state, rule) => root_prime_check(state, rule as RootPrimeRule),
 } as const;
 
 export function check_all(
