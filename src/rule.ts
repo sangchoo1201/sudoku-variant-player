@@ -538,7 +538,7 @@ function match_piece(solving_state: SolvingState, positions: [Position, Digit][]
         0 as BoardCoord
     );
 
-    for (const [r, c] of position_generator([0, 0], [max_row, max_col])) {
+    for (const [r, c] of position_generator([0, 0], [8 - max_row, 8 - max_col] as Position)) {
         if (positions.every(
             ([[dr, dc], v]) =>
                 solving_state.board[r + dr][c + dc].number === v
