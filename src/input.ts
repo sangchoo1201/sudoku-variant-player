@@ -5,7 +5,7 @@ import {
     InputMode, type InputMode as InputModeType, is_selected,
     remove_selection, reset_selection, selection_to_text,
     set_input_mode, set_default_input_mode,
-    show_current_input_mode, open_info, close_info, undo, redo, double_click, get_selection_size, select_all_value,
+    show_current_input_mode, open_info, close_info, undo, redo, double_click,
 } from "./cell.ts";
 
 const DragMode = {
@@ -69,11 +69,7 @@ export function setup_listeners() {
     for (let i = 0; i <= 9; i++) {
         const button = document.querySelector<HTMLButtonElement>(`#button-${i}`)!;
         button.addEventListener('pointerdown', () => {
-            if (get_selection_size() === 0) {
-                select_all_value(i.toString());
-            } else {
-                apply_value(i.toString());
-            }
+            apply_value(i.toString());
         });
     }
 

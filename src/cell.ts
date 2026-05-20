@@ -220,10 +220,6 @@ export function get_single_selection_or_null(): Position | null {
     return decode(k);
 }
 
-export function get_selection_size(): number {
-    return selected.size;
-}
-
 export function get_last_cell(): HTMLDivElement | null {
     return last_cell;
 }
@@ -274,14 +270,14 @@ export function double_click([r, c]: Position) {
     const mode = get_input_mode();
     const cell = solving_state.board[r][c];
 
-    if (mode === InputMode.Normal) {
-        if (cell.number === null) return;
+    if (mode !== InputMode.Color && cell.number !== null) {
         value = cell.number.toString();
-    } else {
+        select_all_value(value, InputMode.Normal);
+    } else if (mode !== InputMode.Normal) {
         let set: Record<string, true>;
         if (mode === InputMode.Color) {
             set = cell.color;
-        } else if (!cell.fixed && cell.number === null) {
+        } else if (!cell.fixed) {
             set = cell[mode];
         } else {
             return;
@@ -289,16 +285,18 @@ export function double_click([r, c]: Position) {
         for (const s in set) {
             value += s;
         }
+        if (value === "") return;
+        select_all_value(value);
+    } else {
+        return;
     }
 
-    select_all_value(value);
     set_last_cell([r, c]);
 }
 
-export function select_all_value(value: string) {
+export function select_all_value(value: string, mode: InputMode = get_input_mode()) {
     reset_selection();
 
-    const mode = get_input_mode();
     if (mode === InputMode.Normal) {
         const number = Number(value);
         for (const [i, j] of position_generator()) {
@@ -312,7 +310,7 @@ export function select_all_value(value: string) {
             let set: Record<string, true>;
             if (mode === InputMode.Color) {
                 set = cell.color;
-            } else if (!cell.fixed) {
+            } else if (!cell.fixed && cell.number === null) {
                 set = cell[mode];
             } else {
                 continue;
@@ -498,6 +496,10 @@ export function apply_value(value: string) {
     const mode = get_input_mode();
 
     if (mode === InputMode.Normal && !('1' <= value && value <= '9')) return;
+    if (selected.size === 0) {
+        select_all_value(value);
+        return;
+    }
 
     const add = !is_common(value);
     if (mode === InputMode.Normal) {
