@@ -283,16 +283,33 @@ const sequence_check: RuleCheckingFunction<SequenceRule> = function (
 
     for (const [direction, index, sequence] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
+        const set = new Set<Digit>(sequence);
 
-        let j = 0;
+        const compressed: [Digit | null, number][] = [];
+        for (const x of sequence) {
+            const last = compressed[compressed.length - 1];
+
+            if (last === undefined || last[0] !== x) {
+                compressed.push([x, 1]);
+            } else {
+                last[1]++;
+            }
+        }
+
+        const pattern = new RegExp('^' + compressed.map(([digit, amount]) => `[0${digit}]{${amount},}`).join('') + '$');
+
+        let str = "";
         for (const i of board_coords) {
             const [r, c] = get_pos(i);
             const v = solving_state.board[r][c].number;
-            if (v === null || v === sequence[j]) j++;
-            if (j >= sequence.length) break;
+            if (v === null) {
+                str += "0";
+            } else if (set.has(v)) {
+                str += v.toString();
+            }
         }
 
-        if (j !== sequence.length) {
+        if (!pattern.test(str)) {
             errors.add_direction(direction, index);
         }
     }
