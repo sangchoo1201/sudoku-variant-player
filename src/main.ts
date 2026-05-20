@@ -13,7 +13,7 @@ import {load_state} from "./storage.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
-    difficulty: 0,
+    difficulty: "?",
     board: Array.from({length: 9}, () => Array(9).fill(0)),
     rules: [
         {
@@ -323,6 +323,10 @@ function setup_modal(puzzle_data: PuzzleData) {
     const title = document.createElement('h2');
     title.innerText = `ID: ${puzzle_data.id}`;
     info_text.appendChild(title);
+
+    const difficulty = document.createElement('h3');
+    difficulty.innerText = `Difficulty: ${puzzle_data.difficulty}`;
+    info_text.appendChild(difficulty);
 
     for (const rule of puzzle_data.rules) {
         const description = document.createElement('p');
