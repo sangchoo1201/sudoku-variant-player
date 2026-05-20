@@ -126,13 +126,13 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
 
     for (const rule of puzzle_data.rules) {
         if (rule.id === "[QT]" || rule.id === "[RG]" || rule.id === "[SQ]" || rule.id === "[SQ']") {
-            for (const [dir, _idx, numbers] of rule.render_state.side_hints) {
-                mx_lengths[dir] = Math.max(mx_lengths[dir], numbers.length);
+            for (const [dir, _idx, hints] of rule.render_state.side_hints) {
+                mx_lengths[dir] = Math.max(mx_lengths[dir], hints.length);
             }
         }
-        if (rule.id === "[PD]") {
-            for (const [dir, _idx, number] of rule.render_state.side_hints) {
-                let len = (number.toString().length + 1) / 2;
+        if (rule.id === "[PD]" || rule.id === "[RG']") {
+            for (const [dir, _idx, hint] of rule.render_state.side_hints) {
+                let len = (hint.toString().length + 1) / 2;
                 if (dir === "COL" || dir === "COL_TOP") len = 1;
                 mx_lengths[dir] = Math.max(mx_lengths[dir], len);
             }
@@ -259,7 +259,8 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
     return [cell_map, left, right, top, bottom];
 }
 
-const side_description = " (보드 바깥의 숫자는 다른 규칙들과 무관합니다)";
+const side_number_description = " (보드 바깥의 숫자는 다른 규칙들과 무관합니다)";
+const side_text_description = " (보드 바깥의 문자는 다른 규칙들과 무관합니다)";
 const rule_description: Record<RuleID, string> = {
     "[Sudoku]": "스도쿠: 보드판의 모든 칸에 1~9 숫자를 채워야 합니다.",
     "[R]": "가로열: 보드판의 가로줄에는 같은 숫자가 중복할 수 없습니다.",
@@ -272,13 +273,14 @@ const rule_description: Record<RuleID, string> = {
     "[LO]": "로터스: 동그라미 표시 된 칸은 상하좌우로 인접한 칸의 숫자들 모두보다 값이 크거나 모두보다 작습니다.",
     "[MR]": "메트로: 색선으로 표시된 노선 위의 모든 숫자는 순서에 상관없이 중복 없는 연속된 숫자들로 이루어져야 합니다.",
 
-    "[SQ]": "시퀀스: 보드 바깥에 주어진 적색 숫자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다." + side_description,
-    "[QT]": "퀀텀: 보드판 바깥에 녹색 숫자 'X Y'가 주어지면, 해당 줄에서 'X번째 숫자가 Y' 및 'Y번째 숫자가 X' 중 정확히 하나가 성립합니다." + side_description,
-    "[RG]": "레인지: 보드 바깥에 주어진 청색 숫자들은 해당 줄에서 '1'과 '9' 사이의 거리를 나타냅니다." + side_description,
+    "[SQ]": "시퀀스: 보드 바깥에 주어진 적색 숫자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다." + side_number_description,
+    "[QT]": "퀀텀: 보드판 바깥에 녹색 숫자 'X Y'가 주어지면, 해당 줄에서 'X번째 숫자가 Y' 및 'Y번째 숫자가 X' 중 정확히 하나가 성립합니다." + side_number_description,
+    "[RG]": "레인지: 보드 바깥에 주어진 청색 숫자들은 해당 줄에서 '1'과 '9' 사이의 거리를 나타냅니다." + side_number_description,
     "[QD]": "쿼드: 어떤 2×2 영역을 잡아도, 4개의 숫자 중 홀수와 짝수가 각각 하나 이상 존재합니다.",
     "[RF]": "레퍼런스: 굵은 적색 선으로 표시된 줄이 X번째 줄일 때, 그 줄의 숫자 Y가 있는 칸에서 직교하는 줄의 Y번째 칸에는 반드시 X가 들어갑니다.",
 
-    "[PR]": "프리즘: 빨간 육각형 사이의 두 숫자를 두 자리 수로 읽으면 소수이고, 파란 육각형 사이의 두 숫자를 두 자리 수로 읽으면 제곱수입니다. 가로는 왼쪽이 십의 자리, 세로는 위가 십의 자리입니다.",
+    "[PR]": "프리즘: 빨간 육각형 사이의 두 숫자를 두 자리 수로 읽으면 소수이고, 파란 육각형 사이의 두 숫자를 두 자리 수로 읽으면 제곱수입니다. " +
+        "가로는 왼쪽이 십의 자리, 세로는 위가 십의 자리입니다.",
     "[TM]": "템퍼러쳐: 파란 영역 내 세 숫자의 합은 10 이하, 초록 영역은 합이 정확히 15, 빨간 영역의 합은 20 이상입니다.",
     "[RT]": "루트: 회색 숫자가 표시된 칸에서 가장 가까운 같은 숫자까지의 거리는 표시된 값과 같습니다.",
     "[PO]": "포인트: 삼각형 모양으로 연결된 두 칸에서, 삼각형이 가리키는 쪽이 아닌 쪽보다 숫자가 커야 합니다.",
@@ -293,7 +295,7 @@ const rule_description: Record<RuleID, string> = {
     "[ES]": "이스케이프: 모든 짝수가 적힌 상하좌우로 인접한 덩어리는 보드판 상단 또는 하단 모서리와 만나야 합니다.",
     "[TP]": "트리플렛: 대각선 방향으로 연속한 세 칸의 숫자는 증가하거나 감소하는 순서로 나열될 수 없습니다.",
     "[EP]": "엡실론: 1, 2, 3, 4가 적힌 모든 칸은 상하좌우로 인접해 정확히 3칸의 크기를 갖는 덩어리를 형성합니다.",
-    "[PD]": "프로덕트: 보드 바깥에 주어진 갈색 숫자는 그 줄에서 가장자리부터 3칸의 숫자 곱과 같습니다." + side_description,
+    "[PD]": "프로덕트: 보드 바깥에 주어진 갈색 숫자는 그 줄에서 가장자리부터 3칸의 숫자 곱과 같습니다." + side_number_description,
     "[BP]": "범퍼: 상하좌우로 인접한 모든 칸과 값이 3 이상 차이나는 칸을 '범퍼'라고 합니다. 각 행과 열에는 정확히 한 개의 '범퍼'가 존재합니다.",
 
     "[BD]": "브릿지: 보드판 왼쪽 면에 표시된 칸을 시작점으로 하는 서로 교차하지 않는 체인이 X개 존재합니다. " +
@@ -308,8 +310,11 @@ const rule_description: Record<RuleID, string> = {
     "[LO']": "로터스': 동그라미 표시 된 칸의 숫자는 상하좌우로 인접한 칸의 숫자들의 산술평균과 같습니다. (소숫점 버림)",
     "[QD']": "쿼드': 어떤 2×2 영역을 잡아도, 4개 숫자의 합이 3의 배수가 아닙니다.",
     "[RT']": "루트': 회색 숫자가 표시된 칸에서 가장 먼 같은 숫자까지의 거리는 표시된 값과 같습니다.",
-    "[SQ']": "시퀀스': 보드 바깥에 주어진 적색 문자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다. L은 1-3, M은 4-6, H는 7-9를 대신합니다. " +
-        "(보드 바깥의 문자는 다른 규칙들과 무관합니다.)",
+    "[SQ']": "시퀀스': 보드 바깥에 주어진 적색 문자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다. " +
+        "L은 1-3, M은 4-6, H는 7-9를 대신합니다. " + side_text_description,
+
+    "[RG']": "레인지': 보드 바깥에 주어진 청색 알파벳들은 해당 줄에서 '1'과 '9' 사이의 거리를 나타냅니다. " +
+        "'A'~'H'는 1부터 8까지의 숫자와 일대일 대응됩니다." + side_text_description,
 }
 
 const info_text = document.getElementById('info-text')!;
@@ -322,8 +327,8 @@ function setup_modal(puzzle_data: PuzzleData) {
     for (const rule of puzzle_data.rules) {
         const description = document.createElement('p');
         const text = rule_description[rule.id];
-        if (!text) continue;
-        description.innerText = rule.id + ' ' + text;
+        if (text) description.innerText = rule.id + ' ' + text;
+        else description.innerText = rule.id + ": ???";
         info_text.appendChild(description);
     }
 }

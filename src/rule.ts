@@ -26,6 +26,7 @@ import {
     board_coords, digits, position_generator, type PositionExtended, type Side, type TrailRule, type ProductRule,
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
     type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule,
+    type RangePrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1206,6 +1207,81 @@ const sequence_prime_check: RuleCheckingFunction<SequencePrimeRule> = function (
     return errors.result();
 }
 
+const range_prime_check: RuleCheckingFunction<RangePrimeRule> = function (
+    solving_state: SolvingState, rule: RangePrimeRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const letters = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
+    type letters = typeof letters[number];
+    const ranges: Record<letters, number | null> = Object.fromEntries(
+        letters.map(x => [x, null])
+    ) as Record<letters, number | null>;
+
+    next: for (const [direction, index, letter] of rule.render_state.side_hints) {
+        const get_pos = generate_get_pos(direction, index);
+        const one_pos: BoardCoord[] = [], nine_pos: BoardCoord[] = [];
+        let null_count = 0;
+
+        for (const i of board_coords) {
+            const [r, c] = get_pos(i);
+            const v = solving_state.board[r][c].number;
+            if (v === null) null_count++;
+            if (v === 1) one_pos.push(i);
+            if (v === 9) nine_pos.push(i);
+        }
+
+        if (Math.min(one_pos.length, 1) + Math.min(nine_pos.length, 1) + null_count < 2) {
+            errors.add_direction(direction, index);
+            continue;
+        }
+
+        let dist: number | null = null;
+        for (const one of one_pos) {
+            for (const nine of nine_pos) {
+                const d = Math.abs(one - nine);
+                if (dist === null) {
+                    dist = d;
+                } else if (dist !== d) {
+                    errors.add_direction(direction, index);
+                    errors.add_all(one_pos.map(get_pos));
+                    errors.add_all(nine_pos.map(get_pos));
+                    continue next;
+                }
+            }
+        }
+
+        if (dist === null) continue;
+
+        if (ranges[letter] === null) {
+            ranges[letter] = dist;
+        } else if (ranges[letter] !== dist) {
+            ranges[letter] = -1;
+        }
+    }
+
+    const values = new Set<number>([-1]);
+    const duplicates = new Set<number>();
+    for (const letter of letters) {
+        const value = ranges[letter];
+        if (value === null) continue;
+        if (values.has(value)) {
+            duplicates.add(value);
+        } else {
+            values.add(value);
+        }
+    }
+
+    for (const [direction, index, letter] of rule.render_state.side_hints) {
+        if (ranges[letter] === null) continue;
+        if (duplicates.has(ranges[letter])) {
+            errors.add_direction(direction, index);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1246,6 +1322,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[LO']": (state, rule) => lotus_prime_check(state, rule as LotusPrimeRule),
     "[RT']": (state, rule) => root_prime_check(state, rule as RootPrimeRule),
     "[SQ']": (state, rule) => sequence_prime_check(state, rule as SequencePrimeRule),
+    "[RG']": (state, rule) => range_prime_check(state, rule as RangePrimeRule),
 } as const;
 
 export function check_all(

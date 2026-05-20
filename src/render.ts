@@ -16,7 +16,7 @@ import {
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
     is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
-    type SequencePrimeRule,
+    type SequencePrimeRule, type RangePrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -614,11 +614,11 @@ function side_render(ctx: RenderContext, rule: SideRule, color: string) {
     for (let [direction, index, cells] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
 
-        if (typeof cells === 'number') cells = [cells];
+        const arr: Array<string | number> = Array.isArray(cells) ? cells : [cells];
 
         for (const b of [-0.5, 0.5]) {
             const [x1, y1] = get_pos(-0.5, b);
-            const [x2, y2] = get_pos(cells.length - 0.5, b);
+            const [x2, y2] = get_pos(arr.length - 0.5, b);
             const line = generate_line([x1, y1], [x2, y2]);
 
             line.setAttribute("stroke", "#aaa");
@@ -627,7 +627,7 @@ function side_render(ctx: RenderContext, rule: SideRule, color: string) {
             ctx.layer_middle.appendChild(line);
         }
 
-        for (const [i, value] of cells.entries()) {
+        for (const [i, value] of arr.entries()) {
             const text = document.createElementNS(
                 "http://www.w3.org/2000/svg",
                 "text"
@@ -672,6 +672,9 @@ const product_render: Renderer<ProductRule> = (ctx: RenderContext, rule: Product
 const sequence_prime_render: Renderer<SequencePrimeRule> = (ctx: RenderContext, rule: SequencePrimeRule) =>
     side_render(ctx, rule, "red");
 
+const range_prime_render: Renderer<RangePrimeRule> = (ctx: RenderContext, rule: RangePrimeRule) =>
+    side_render(ctx, rule, "blue");
+
 const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[Sudoku]": sudoku_render,
     "[R]": row_render,
@@ -711,6 +714,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[LO']": (ctx, r) => lotus_prime_render(ctx, r as LotusPrimeRule),
     "[RT']": (ctx, r) => root_prime_render(ctx, r as RootPrimeRule),
     "[SQ']": (ctx, r) => sequence_prime_render(ctx, r as SequencePrimeRule),
+    "[RG']": (ctx, r) => range_prime_render(ctx, r as RangePrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 
