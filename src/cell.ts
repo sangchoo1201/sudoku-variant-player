@@ -36,6 +36,7 @@ const prev_mode: Record<InputMode, InputMode> = {
 type ModifyType =
     { type: "add", value: string } |
     { type: "remove", value: string } |
+    { type: "toggle", value: string} |
     { type: "reset" } |
     { type: "nothing" } |
     { type: "overwrite_number", value: Digit | null } |
@@ -44,6 +45,7 @@ type ModifyType =
 const Modify = {
     add: (value: string): ModifyType => ({ type: 'add', value }),
     remove: (value: string): ModifyType => ({ type: 'remove', value }),
+    toggle: (value: string): ModifyType => ({ type: 'toggle', value }),
     reset: (): ModifyType => ({ type: 'reset' }),
     nothing: (): ModifyType => ({ type: 'nothing' }),
     overwrite_number: (value: Digit | null): ModifyType => ({ type: 'overwrite_number', value }),
@@ -405,6 +407,14 @@ function set_modify(set: Record<string, true>, modify: ModifyType): boolean {
             delete set[modify.value];
             break;
 
+        case "toggle":
+            if (set[modify.value] === true) {
+                delete set[modify.value];
+            } else {
+                set[modify.value] = true;
+            }
+            break;
+
         case "reset":
             for (const key in set) {
                 delete set[key];
@@ -697,11 +707,8 @@ export function undo() {
         }
     } else {
         const modify_function = memo_modify[action.type];
-        const [r, c] = action.pos[0];
-        const cell = solving_state.board[r][c];
-        const add = (!cell.fixed && cell[action.type][action.memo] !== true);
         for (const pos of action.pos) {
-            modify_function(pos, (add ? Modify.add : Modify.remove)(action.memo.toString()));
+            modify_function(pos, Modify.toggle(action.memo.toString()));
         }
     }
     save_state(puzzle_id, solving_state);
@@ -724,11 +731,8 @@ export function redo() {
         }
     } else {
         const modify_function = memo_modify[action.type];
-        const [r, c] = action.pos[0];
-        const cell = solving_state.board[r][c];
-        const add = (!cell.fixed && cell[action.type][action.memo] !== true);
         for (const pos of action.pos) {
-            modify_function(pos, (add ? Modify.add : Modify.remove)(action.memo.toString()));
+            modify_function(pos, Modify.toggle(action.memo.toString()));
         }
     }
     save_state(puzzle_id, solving_state);
