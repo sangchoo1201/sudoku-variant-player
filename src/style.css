@@ -276,7 +276,7 @@ button.selected-mode {
 }
 
 button.inactive {
-    color: #777;
+    color: #999;
 }
 
 #digit-pad > button {
