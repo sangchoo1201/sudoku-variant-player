@@ -444,7 +444,9 @@ function center_modify([r, c]: Position, modify: ModifyType): boolean {
     if (!change && modify.type !== "nothing") return false;
 
     const sorted_keys = Object.keys(cell_state.center).sort();
-    cell_element.center.textContent = sorted_keys.join('').slice(0, 8);
+    const text = sorted_keys.join('')
+    cell_element.center.style.fontSize = Math.min(2.5 - 0.25 * (text.length - 7), 2.5).toString() + "cqw";
+    cell_element.center.textContent = text;
     return true;
 }
 
