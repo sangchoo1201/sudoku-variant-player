@@ -283,8 +283,7 @@ export function double_click([r, c]: Position) {
     const cell = solving_state.board[r][c];
 
     if (mode !== InputMode.Color && cell.number !== null) {
-        value = cell.number.toString();
-        select_all_value(value, InputMode.Normal);
+        select_all_value(cell.number.toString(), InputMode.Normal);
     } else if (mode !== InputMode.Normal) {
         let set: Record<string, true>;
         if (mode === InputMode.Color) {
@@ -297,8 +296,14 @@ export function double_click([r, c]: Position) {
         for (const s in set) {
             value += s;
         }
-        if (value === "") return;
-        select_all_value(value);
+        if (value === "") {
+            if (!(mode === InputMode.Color && cell.number !== null)) {
+                return;
+            }
+            select_all_value(cell.number.toString(), InputMode.Normal);
+        } else {
+            select_all_value(value);
+        }
     } else {
         return;
     }
