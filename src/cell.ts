@@ -1,7 +1,7 @@
 import type {CellType} from "./main.ts";
 import {
     type BoardChange,
-    type Digit, type DigitOrZero,
+    type Digit, type DigitOrZero, digits,
     type Position,
     position_generator,
     type PositionExtended,
@@ -144,6 +144,7 @@ let bottom: HTMLDivElement[];
 let solving_state: SolvingState;
 let rules: Rule[];
 let puzzle_id: string;
+let has_basic: boolean = false;
 
 export function init_all(
     map: CellType[][],
@@ -163,6 +164,15 @@ export function init_all(
     solving_state = state;
     rules = rule;
     puzzle_id = id;
+
+
+    const basic_rules = new Set<string>(["[R]", "[C]", "[B]", "[SG]"])
+    for (const rule of rules) {
+        if (basic_rules.has(rule.id)) {
+            has_basic = true;
+            break;
+        }
+    }
 
     show_errors();
 }
@@ -481,9 +491,28 @@ export function update_all() {
     show_errors();
 }
 
+function show_completed() {
+    if (!has_basic) return;
+
+    const counts = Array(10).fill(0);
+    for (const [r, c] of position_generator()) {
+        const v = solving_state.board[r][c].number;
+        if (v !== null) counts[v]++;
+    }
+
+    for (const digit of digits) {
+        if (counts[digit] === 9) {
+            digit_buttons[digit].classList.add("inactive");
+        } else {
+            digit_buttons[digit].classList.remove("inactive");
+        }
+    }
+}
+
 function update_board(changes: BoardChange) {
     if (changes.type === InputMode.Normal) {
         if (changes.before.length === 0) return;
+        show_completed();
         show_errors();
     }
     solving_state.undo.push(changes);

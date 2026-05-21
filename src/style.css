@@ -246,6 +246,8 @@ button {
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+
+    --ring: 2cqw;
 }
 
 #digit-pad > button {
@@ -270,7 +272,11 @@ button:focus {
 }
 
 button.selected-mode {
-    box-shadow: inset 0 0 0 10px rgba(100, 150, 255, 0.4);
+    box-shadow: inset 0 0 0 var(--ring) rgba(100, 150, 255, 0.4);
+}
+
+button.inactive {
+    color: #777;
 }
 
 #digit-pad > button {
