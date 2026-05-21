@@ -105,6 +105,7 @@ const corner_order = [0, 4, 1, 6, 8, 7, 2, 5, 3] as const;
 export type CellType = {
     cell: HTMLDivElement,
     normal: HTMLDivElement,
+    corner_parent: HTMLDivElement,
     corner: HTMLDivElement[],
     center: HTMLDivElement,
     color: SVGGElement,
@@ -230,6 +231,7 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
             cell_map[r][c] = {
                 cell: cell,
                 normal: normal,
+                corner_parent: corner,
                 corner: corner_cells,
                 center: center,
                 color: g,

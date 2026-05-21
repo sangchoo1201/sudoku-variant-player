@@ -8,7 +8,7 @@ import {
     type Rule, type SingleMemoDelete, type SingleNumberChange,
     type SolvingState
 } from "./schema.ts";
-import {check_all} from "./rule.ts";
+import {check_all, check_memo} from "./rule.ts";
 import {save_state} from "./storage.ts";
 
 export const InputMode = {
@@ -435,11 +435,15 @@ function corner_modify([r, c]: Position, modify: ModifyType): boolean {
 
     const sorted_keys = Object.keys(cell_state.corner).sort();
     for (let i = 0; i < 8; i++) {
-        if (i < sorted_keys.length) {
-            cell_element.corner[i].textContent = sorted_keys[i];
-        } else {
-            cell_element.corner[i].textContent = '';
+        const element = cell_element.corner[i];
+        element.className = '';
+        if (i >= sorted_keys.length) {
+            element.textContent = '';
+            continue;
         }
+        const key = sorted_keys[i]
+        element.textContent = key;
+        element.classList.add(`memo-${key}`);
     }
     return true;
 }
@@ -454,9 +458,10 @@ function center_modify([r, c]: Position, modify: ModifyType): boolean {
     if (!change && modify.type !== "nothing") return false;
 
     const sorted_keys = Object.keys(cell_state.center).sort();
-    const text = sorted_keys.join('')
-    cell_element.center.style.fontSize = Math.min(2.5 - 0.25 * (text.length - 7), 2.5).toString() + "cqw";
-    cell_element.center.textContent = text;
+    cell_element.center.style.fontSize = Math.min(2.5 - 0.25 * (sorted_keys.length - 7), 2.5).toString() + "cqw";
+    cell_element.center.innerHTML = sorted_keys
+        .map(key => `<span class="memo-${key}">${key}</span>`)
+        .join("");
     return true;
 }
 
@@ -628,12 +633,11 @@ export function append_errors(error_positions: PositionExtended[]) {
 }
 
 export function show_errors() {
-    const [_, errors] = check_all(solving_state, rules);
-
     for (let i = 0; i < 9; i++) {
         for (let j = 0; j < 9; j++) {
-            const cell = cell_map[i][j].cell;
-            cell.classList.remove('error');
+            cell_map[i][j].cell.classList.remove('error');
+            cell_map[i][j].center.className = 'center';
+            cell_map[i][j].corner_parent.className = 'corner';
         }
         left[i].classList.remove('error');
         right[i].classList.remove('error');
@@ -641,9 +645,21 @@ export function show_errors() {
         bottom[i].classList.remove('error');
     }
 
+    const [_, errors] = check_all(solving_state, rules);
+
     for (const [_, error] of entries(errors)) {
         if (error === undefined) continue;
         append_errors(error);
+    }
+
+    const error_board = check_memo(solving_state, rules);
+    for (const [r, c] of position_generator()) {
+        const set = error_board[r][c];
+        const cell = cell_map[r][c];
+        for (const digit of set) {
+            cell.center.classList.add(`error-${digit}`);
+            cell.corner_parent.classList.add(`error-${digit}`);
+        }
     }
 }
 

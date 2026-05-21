@@ -1359,3 +1359,43 @@ export function check_all(
 
     return [correct, errors];
 }
+
+function memo_duplicate_check(
+    solving_state: SolvingState, map: CoordinateMappingFunction, error_board: Set<Digit>[][]
+) {
+    for (const i of board_coords) {
+        const positions = board_coords.map(x => map(i, x));
+        const set = new Set<Digit>(
+            positions
+                .map(([r, c]) => solving_state.board[r][c].number)
+                .filter(x => x !== null)
+        );
+        for (const [r, c] of positions) {
+            set.forEach(digit => error_board[r][c].add(digit));
+        }
+    }
+}
+
+export function check_memo(
+    solving_state: SolvingState, rules: Rule[]
+): Set<Digit>[][] {
+    const error_board = Array.from({ length: 9 }, _ => Array.from({ length: 9 }, _ => new Set<Digit>()));
+
+    for (const rule of rules) {
+        if (rule.id === "[R]") {
+            memo_duplicate_check(solving_state, (row, index) => [row, index] as Position, error_board);
+        }
+        if (rule.id === "[C]") {
+            memo_duplicate_check(solving_state, (col, index) => [index, col] as Position, error_board);
+        }
+        if (rule.id === "[B]") {
+            memo_duplicate_check(solving_state, (box, index) =>
+                [(Math.floor(box / 3) * 3 + Math.floor(index / 3)), (box % 3) * 3 + (index % 3)] as Position, error_board);
+        }
+        if (rule.id === "[SG]") {
+            memo_duplicate_check(solving_state, (region, index) => rule.render_state.regions[region][index], error_board);
+        }
+    }
+
+    return error_board;
+}
