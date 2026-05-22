@@ -16,7 +16,7 @@ import {
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
     is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
-    type SequencePrimeRule, type RangePrimeRule, type TrailPrimeRule,
+    type SequencePrimeRule, type RangePrimeRule, type TrailPrimeRule, type SegmentPrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -91,6 +91,101 @@ function generate_polygon(positions: Coordinate[]): SVGPolygonElement {
     return generate_poly(positions, "polygon");
 }
 
+function generate_cage(region: Position[], inset: number = 0): SVGPathElement {
+    const encode_pos = ([r, c]: Position): number => r * 10 + c;
+    const encode_coord = ([r, c]: Coordinate): number => r * 10 + c;
+    const equal_coord = ([r1, c1]: Coordinate, [r2, c2]: Coordinate): boolean => r1 === r2 && c1 === c2;
+
+    const directions: Coordinate[] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+    const first: Coordinate[] = [[1, 0], [-1, 1], [-2, -1], [0, -2]];
+    const second: Coordinate[] = [[1, -1], [0, 1], [-2, 0], [-1, -2]];
+
+    const add = ([r, c]: Coordinate, [dr, dc]: Coordinate): Coordinate => [r + dr, c + dc];
+    const sub = ([r1, c1]: Coordinate, [r2, c2]: Coordinate): Coordinate => [r1 - r2, c1 - c2];
+
+    const adjacent: Coordinate[] = [[0, 0], [0, 1], [1, 0], [1, 1]];
+
+    const vertex_map: Partial<Record<number, number>> = {};
+    for (const [r, c] of region) {
+        for (const coord of adjacent.map(([dr, dc]) => [r + dr, c + dc]) as Coordinate[]) {
+            const key = encode_coord(coord);
+            if (vertex_map[key] === undefined) {
+                vertex_map[key] = 1;
+                continue;
+            }
+            vertex_map[key]++;
+            if (vertex_map[key] === 4) {
+                delete vertex_map[key];
+            }
+        }
+    }
+
+    const set = new Set<number>(region.map(encode_pos));
+    const paths: string[] = [];
+
+    let is_first = true;
+    for (let i = 0; i <= 9; i++) {
+        for (let j = 0; j <= 9; j++) {
+            const key = encode_coord([i, j]);
+            if (vertex_map[key] === undefined) continue;
+            const start_pos: Coordinate = [i, j];
+            let pos: Coordinate = start_pos;
+            let dir = is_first ? 0 : 1;
+            is_first = false;
+            const move = (rotate: number) => {
+                pos = add(pos, directions[dir]);
+                dir = (dir + rotate + 4) % 4;
+            };
+
+            const path: Coordinate[] = [];
+            do {
+                console.log(pos, dir);
+                path.push(pos);
+                delete vertex_map[encode_coord(pos)];
+                const next1 = add(pos, first[dir]);
+                const next2 = add(pos, second[dir]);
+                if (!is_pos(next1) || !set.has(encode_pos(next1))) {
+                    move(1);
+                } else if (!is_pos(next2) || !set.has(encode_pos(next2))) {
+                    move(0);
+                } else {
+                    move(-1);
+                }
+            } while (!equal_coord(pos, start_pos));
+
+            const len = path.length;
+            let path_string = "";
+            for (const [i, pos] of path.entries()) {
+                let shift: Coordinate = [0, 0];
+                for (const [dr, dc] of adjacent) {
+                    const new_pos = add(pos, [dr - 1, dc - 1]);
+                    if (is_pos(new_pos) && set.has(encode_pos(new_pos))) {
+                        shift = add(shift, [dr - 0.5, dc - 0.5]);
+                    }
+                }
+                if (equal_coord(shift, [0, 0])) {
+                    for (const j of [(i + 1) % len, (i - 1 + len) % len]) {
+                        shift = add(shift, sub(path[j], pos));
+                    }
+                }
+                shift = shift.map(x => Math.max(-inset, Math.min(inset, x))) as Coordinate;
+                path_string += `${i === 0 ? "M" : "L"} ${pos[1] + shift[1]} ${pos[0] + shift[0]} `;
+            }
+            console.log(path_string);
+            paths.push(path_string + "Z");
+        }
+    }
+
+    const path_element = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+    );
+    path_element.setAttribute("d", paths.join("\n"));
+    path_element.setAttribute("fill-rule", "evenodd");
+
+    return path_element;
+}
+
 const nothing_render = () => {};
 
 const sudoku_render: PureRenderer = function (ctx: RenderContext) {
@@ -143,30 +238,12 @@ const box_render: PureRenderer = function (ctx: RenderContext) {
 }
 
 const segment_render: Renderer<SegmentRule> = function (ctx: RenderContext, rule: SegmentRule) {
-    const d = 0.06, d2 = d / 2;
-
-    const encode = ([r, c]: Position) => r * 100 + c;
-    const lambda_generator: ((p: Position) => [Position, Coordinate, Coordinate])[] = [
-        ([r, c]) => [[r - 1, c] as Position, [c - d2, r], [c + 1 + d2, r]],
-        ([r, c]) => [[r, c - 1] as Position, [c, r - d2], [c, r + 1 + d2]],
-        ([r, c]) => [[r + 1, c] as Position, [c + 1 + d2, r + 1], [c - d2, r + 1]],
-        ([r, c]) => [[r, c + 1] as Position, [c + 1, r + 1 + d2], [c + 1, r - d2]],
-    ];
-
-    for (const cells of rule.render_state.regions) {
-        const set = new Set(cells.map(encode));
-        for (const [r, c] of cells) {
-            for (let i = 0; i < 4; i++) {
-                const [neighbor, c1, c2] = lambda_generator[i]([r, c]);
-                if (set.has(encode(neighbor))) continue;
-
-                const line = generate_line(c1, c2);
-                line.setAttribute("stroke", "black");
-                line.setAttribute("stroke-width", "0.06");
-
-                ctx.layer_middle.appendChild(line);
-            }
-        }
+    for (const region of rule.render_state.regions) {
+        const path = generate_cage(region);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "black");
+        path.setAttribute("stroke-width", "0.06");
+        ctx.layer_middle.appendChild(path);
     }
 }
 
@@ -423,23 +500,14 @@ const vector_render: Renderer<VectorRule> = function (ctx: RenderContext, rule: 
 }
 
 const pair_render: Renderer<PairRule> = function (ctx: RenderContext, rule: PairRule) {
-    const d = 0.1;
-    for (const [[r1, c1], [r2, c2]] of rule.render_state.dominoes) {
-        const x1 = Math.min(c1, c2) + d;
-        const x2 = Math.max(c1, c2) + 1 - d;
-        const y1 = Math.min(r1, r2) + d;
-        const y2 = Math.max(r1, r2) + 1 - d;
-
-        const points: [number, number][] = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
-        const poly = generate_polygon(points);
-
-        poly.setAttribute("fill", "rgba(151, 104, 255, 0.2)");
-        poly.setAttribute("stroke", "rgba(151, 104, 255, 0.8)");
-        poly.setAttribute("stroke-width", "0.02");
-        poly.setAttribute("stroke-dasharray", "0.12 0.08");
-        poly.setAttribute("stroke-dashoffset", "0.06");
-
-        ctx.layer_bottom.appendChild(poly);
+    for (const region of rule.render_state.dominoes) {
+        const path = generate_cage(region, 0.1);
+        path.setAttribute("fill", "rgba(151, 104, 255, 0.2)");
+        path.setAttribute("stroke", "rgba(151, 104, 255, 0.8)");
+        path.setAttribute("stroke-width", "0.02");
+        path.setAttribute("stroke-dasharray", "0.12 0.08");
+        path.setAttribute("stroke-dashoffset", "0.06");
+        ctx.layer_bottom.appendChild(path);
     }
 }
 
@@ -494,51 +562,17 @@ const reflex_render: Renderer<ReflexRule> = function (ctx: RenderContext, rule: 
 }
 
 const aquarium_render: Renderer<AquariumRule> = function (ctx: RenderContext, rule: AquariumRule) {
-    type Coord = [number, number];
-
-    const encode = ([r, c]: Position): number => r * 10 + c;
-    const is_smaller = ([r1, c1]: Position, [r2, c2]: Position): boolean => (r1 === r2) ? (c1 < c2) : (r1 < r2);
-    const equal_coord = ([r1, c1]: Coord, [r2, c2]: Coord): boolean => r1 === r2 && c1 === c2;
-
-    const directions: Coord[] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
-    const first: Coord[] = [[1, 0], [-1, 1], [-2, -1], [0, -2]];
-    const second: Coord[] = [[1, -1], [0, 1], [-2, 0], [-1, -2]];
-
-    const add_delta = ([r, c]: Coord, [dr, dc]: Coord, length: number = 1): Coord => [r + dr * length, c + dc * length];
-
     const length = rule.render_state.regions.length;
     for (const [i, region] of rule.render_state.regions.entries()) {
-        const set = new Set<number>(region.map(encode));
-        const start_pos = region.reduce((min, curr) => is_smaller(curr, min) ? curr : min)
-        let pos: Coord = start_pos;
-        let coords: Coord[] = [[pos[0] + 0.5, pos[1] + 0.1]];
-        let dir = 0;
-        const move = (rotate: number, length: number) => {
-            pos = add_delta(pos, directions[dir]);
-            coords.push(add_delta(coords[coords.length - 1], directions[dir], length));
-            dir = (dir + rotate + 4) % 4;
-            coords.push(add_delta(coords[coords.length - 1], directions[dir], length));
-        };
-        do {
-            const next1 = add_delta(pos, first[dir]);
-            const next2 = add_delta(pos, second[dir]);
-            if (!is_pos(next1) || !set.has(encode(next1))) {
-                move(1, 0.4);
-            } else if (!is_pos(next2) || !set.has(encode(next2))) {
-                move(0, 0.5);
-            } else {
-                move(-1, 0.6);
-            }
-        } while (!equal_coord(pos, start_pos));
-        const polygon = generate_polygon(coords.map(([r, c]) => [c, r]));
+        const path = generate_cage(region, 0.1);
         const color = `hsl(${160 + 40 / length * i}, 80%, 50%)`
-        polygon.setAttribute("fill",  color);
-        polygon.setAttribute("fill-opacity", "0.3");
-        polygon.setAttribute("stroke", color);
-        polygon.setAttribute("stroke-width", "0.04");
-        polygon.setAttribute("stroke-dasharray", "0.12 0.08");
-        polygon.setAttribute("stroke-dashoffset", "0.06");
-        ctx.layer_bottom.appendChild(polygon);
+        path.setAttribute("fill",  color);
+        path.setAttribute("fill-opacity", "0.3");
+        path.setAttribute("stroke", color);
+        path.setAttribute("stroke-width", "0.04");
+        path.setAttribute("stroke-dasharray", "0.12 0.08");
+        path.setAttribute("stroke-dashoffset", "0.06");
+        ctx.layer_bottom.appendChild(path);
     }
 }
 
@@ -604,6 +638,20 @@ const trail_prime_render: Renderer<TrailPrimeRule> = function (ctx: RenderContex
     };
 
     trail_render(ctx, trail_rule);
+}
+
+const segment_prime_render: Renderer<SegmentPrimeRule> = function (ctx: RenderContext, rule: SegmentPrimeRule) {
+    const length = rule.render_state.regions.length;
+    for (const [i, region] of rule.render_state.regions.entries()) {
+        const path = generate_cage(region, 0.2);
+        const color = `hsl(${310 / length * i}, 50%, 50%)`;
+        path.setAttribute("fill", color);
+        path.setAttribute("fill-opacity", "0.3");
+        path.setAttribute("stroke", color);
+        path.setAttribute("stroke-opacity", "0.7");
+        path.setAttribute("stroke-width", "0.05");
+        ctx.layer_bottom.appendChild(path);
+    }
 }
 
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
@@ -725,6 +773,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[SQ']": (ctx, r) => sequence_prime_render(ctx, r as SequencePrimeRule),
     "[RG']": (ctx, r) => range_prime_render(ctx, r as RangePrimeRule),
     "[TR']": (ctx, r) => trail_prime_render(ctx, r as TrailPrimeRule),
+    "[SG']": (ctx, r) => segment_prime_render(ctx, r as SegmentPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 

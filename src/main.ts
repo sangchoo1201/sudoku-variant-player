@@ -319,6 +319,7 @@ const rule_description: Record<RuleID, string> = {
         "시작점과 끝점을 제외하면 같은 칸에서 만나지 않는 두 개의 경로가 존재합니다.",
     "[RG']": "레인지': 보드 바깥에 주어진 청색 알파벳들은 해당 줄에서 '1'과 '9' 사이의 거리를 나타냅니다. " +
         "'A'~'H'는 1부터 8까지의 숫자와 일대일 대응됩니다." + side_text_description,
+    "[SG']": "세그먼트': 같은 색상으로 구분된 세그먼트 내에는 같은 숫자가 중복할 수 없습니다.",
 }
 
 const info_text = document.getElementById('info-text')!;

@@ -27,7 +27,7 @@ import {
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
     type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule,
     type RangePrimeRule,
-    type TrailPrimeRule,
+    type TrailPrimeRule, type SegmentPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -122,11 +122,11 @@ function generate_get_pos_extended(direction: DirectionExtended, index: BoardCoo
 }
 
 function generic_duplicate_check(
-    solving_state: SolvingState, map: CoordinateMappingFunction
+    solving_state: SolvingState, map: CoordinateMappingFunction, [a, b]: [number, number] = [9, 9]
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < a; i++) {
         let numbers = digits.reduce(
             (acc, d) => {
                 acc[d] = [];
@@ -134,7 +134,7 @@ function generic_duplicate_check(
             },
             {} as Record<Digit, number[]>
         );
-        for (let j = 0; j < 9; j++) {
+        for (let j = 0; j < b; j++) {
             const [r, c] = map(i, j);
             const cell_data = solving_state.board[r][c];
             if (cell_data.number === null) continue;
@@ -191,9 +191,10 @@ const box_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheck
     );
 
 const segment_check: RuleCheckingFunction<SegmentRule> = (solving_state: SolvingState, rule: SegmentRule): RuleCheckingResult =>
-    generic_duplicate_check(solving_state, (region, index) =>
-        rule.render_state.regions[region][index]
-    );
+    generic_duplicate_check(solving_state, (region, index) => rule.render_state.regions[region][index]);
+
+const segment_prime_check: RuleCheckingFunction<SegmentPrimeRule> = (solving_state: SolvingState, rule: SegmentPrimeRule): RuleCheckingResult =>
+    generic_duplicate_check(solving_state, (region, index) => rule.render_state.regions[region][index], [16, 5]);
 
 const distant_check: PureCheckingFunction = (solving_state: SolvingState): RuleCheckingResult =>
     generic_pair_check(solving_state, king_adjacent);
@@ -1353,6 +1354,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[SQ']": (state, rule) => sequence_prime_check(state, rule as SequencePrimeRule),
     "[RG']": (state, rule) => range_prime_check(state, rule as RangePrimeRule),
     "[TR']": (state, rule) => trail_prime_check(state, rule as TrailPrimeRule),
+    "[SG']": (state, rule) => segment_prime_check(state, rule as SegmentPrimeRule),
 } as const;
 
 export function check_all(
@@ -1374,10 +1376,10 @@ export function check_all(
 }
 
 function memo_duplicate_check(
-    solving_state: SolvingState, map: CoordinateMappingFunction, error_board: Set<Digit>[][]
+    solving_state: SolvingState, map: CoordinateMappingFunction, error_board: Set<Digit>[][], [a, b]: [number, number] = [9, 9]
 ) {
-    for (const i of board_coords) {
-        const positions = board_coords.map(x => map(i, x));
+    for (let i = 0; i < a; i++) {
+        const positions = Array.from({length: b}, (_, x) => map(i, x));
         const set = new Set<Digit>(
             positions
                 .map(([r, c]) => solving_state.board[r][c].number)
@@ -1407,6 +1409,9 @@ export function check_memo(
         }
         if (rule.id === "[SG]") {
             memo_duplicate_check(solving_state, (region, index) => rule.render_state.regions[region][index], error_board);
+        }
+        if (rule.id === "[SG']") {
+            memo_duplicate_check(solving_state, (region, index) => rule.render_state.regions[region][index], error_board, [16, 5]);
         }
     }
 
