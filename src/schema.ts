@@ -549,6 +549,15 @@ const RangePrimeRuleSchema = z.object({
 });
 export type RangePrimeRule = z.infer<typeof RangePrimeRuleSchema>;
 
+const TrailPrimeRuleSchema = z.object({
+    id: z.literal("[TR']"),
+    render_state: z.object({
+        start: PositionSchema,
+        end: PositionSchema,
+    }),
+});
+export type TrailPrimeRule = z.infer<typeof TrailPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -598,6 +607,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     SequencePrimeRuleSchema,
 
     RangePrimeRuleSchema,
+    TrailPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

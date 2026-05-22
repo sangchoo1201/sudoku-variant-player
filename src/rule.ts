@@ -27,6 +27,7 @@ import {
     type DirectionExtended, type BridgeRule, type ReflexRule, type AquariumRule, is_pos, is_coord, type MetaRule,
     type LinkPrimeRule, type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule,
     type RangePrimeRule,
+    type TrailPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1299,6 +1300,17 @@ const range_prime_check: RuleCheckingFunction<RangePrimeRule> = function (
     return errors.result();
 }
 
+const trail_prime_check: RuleCheckingFunction<TrailPrimeRule> = function (
+    solving_state: SolvingState, rule: TrailPrimeRule
+): RuleCheckingResult {
+    const trail_rule: TrailRule = {
+        id: "[TR]",
+        render_state: rule.render_state,
+    };
+
+    return trail_check(solving_state, trail_rule);
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1340,6 +1352,7 @@ const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheck
     "[RT']": (state, rule) => root_prime_check(state, rule as RootPrimeRule),
     "[SQ']": (state, rule) => sequence_prime_check(state, rule as SequencePrimeRule),
     "[RG']": (state, rule) => range_prime_check(state, rule as RangePrimeRule),
+    "[TR']": (state, rule) => trail_prime_check(state, rule as TrailPrimeRule),
 } as const;
 
 export function check_all(
