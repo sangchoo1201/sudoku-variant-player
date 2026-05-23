@@ -169,7 +169,7 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
             side_clue.style.width = `${width * 100}%`;
             side_clue.style.height = main_size_string;
             side_clue.style.top = `${cy * 100}%`;
-            if (direction === "ROW_LEFT") side_clue.style.right = `${(cx + main_size / 2) * 100}%`;
+            if (direction === "ROW_LEFT") side_clue.style.right = `${100 - (cx - main_size / 2) * 100}%`;
             if (direction === "ROW") side_clue.style.left = `${(cx + main_size / 2) * 100}%`;
         }
         if (direction.startsWith("COL")) {
@@ -177,7 +177,7 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
             side_clue.style.width = main_size_string;
             side_clue.style.height = `${height * 100}%`;
             side_clue.style.left = `${cx * 100}%`;
-            if (direction === "COL_TOP") side_clue.style.bottom = `${(cy + main_size / 2) * 100}%`;
+            if (direction === "COL_TOP") side_clue.style.bottom = `${100 - (cy - main_size / 2) * 100}%`;
             if (direction === "COL") side_clue.style.top = `${(cy + main_size / 2) * 100}%`;
         }
     }
