@@ -533,7 +533,7 @@ const bridge_render: Renderer<BridgeRule> = function (ctx: RenderContext, rule: 
         const cx = 0, cy = row + 0.5;
         const points: Coordinate[] = [[cx, cy - d], [cx + d, cy], [cx, cy + d], [cx - d, cy]];
         const poly = generate_polygon(points);
-        poly.setAttribute("fill", `hsl(${360 / len * i}, 100%, 37.3%)`);
+        poly.setAttribute("fill", `hsl(${360 / len * i}, 100%, 34.0%)`);
 
         const line = generate_line([0, row - 0.03], [0, row + 1.03]);
         line.setAttribute("stroke", `hsl(${360 / len * i}, 100%, 43.1%)`);

@@ -957,9 +957,10 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
         return null;
     }
 
-    for (const start of rule.render_state.start_rows) {
+    const set = new Set<BoardCoord>(rule.render_state.start_rows);
+    for (const start of board_coords) {
+        if (!set.has(start)) continue;
         const result = dfs([[start, 0]], null, new Set<number>());
-        console.log(result);
         if (result === null) {
             errors.add([start, 0]);
         } else {
