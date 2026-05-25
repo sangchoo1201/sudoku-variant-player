@@ -254,11 +254,16 @@ const metro_check: RuleCheckingFunction<MetroRule> = function (
     solving_state: SolvingState, rule: MetroRule
 ): RuleCheckingResult {
     const errors = create_error_collector();
+    const encode = ([r, c]: Position) => r * 10 + c;
 
     for (const metro of rule.render_state.metros) {
         const nums: number[] = [];
 
+        const set = new Set<number>();
+
         for (const [r, c] of metro) {
+            if (set.has(encode([r, c]))) continue;
+            set.add(encode([r, c]));
             const value = solving_state.board[r][c].number;
             if (value === null) continue;
             nums.push(value);
@@ -270,7 +275,7 @@ const metro_check: RuleCheckingFunction<MetroRule> = function (
         }
 
         const min = Math.min(...nums), max = Math.max(...nums);
-        if (max - min + 1 > metro.length) {
+        if (max - min + 1 > set.size) {
             errors.add_all(metro);
         }
     }
