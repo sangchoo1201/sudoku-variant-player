@@ -339,13 +339,13 @@ const inversion_render: Renderer<InversionRule> = function (ctx: RenderContext, 
         g.setAttribute("opacity", "0.5");
 
         const circle = generate_circle(pos_to_coord(line[0]));
-        circle.setAttribute("r", "0.2");
+        circle.setAttribute("r", "0.22");
         circle.setAttribute("fill", "rgb(30, 194, 112)");
         g.appendChild(circle);
 
         const poly = generate_polyline(line.map(pos_to_coord));
         poly.setAttribute("stroke", "rgb(30, 194, 112)");
-        poly.setAttribute("stroke-width", "0.15");
+        poly.setAttribute("stroke-width", "0.18");
         poly.setAttribute("stroke-linejoin", "round");
         poly.setAttribute("stroke-linecap", "round");
         g.appendChild(poly);
