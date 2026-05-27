@@ -7,6 +7,7 @@ import {
     set_input_mode, set_default_input_mode,
     show_current_input_mode, open_info, close_info, undo, redo, double_click,
 } from "./cell.ts";
+import {locale} from "./i18n/i18n.ts";
 
 const DragMode = {
     None: "none",
@@ -38,7 +39,7 @@ export async function redirect_puzzle_id(puzzle_id: string, redirect: boolean) {
     const response = await fetch(`https://puzzle-id.sangchoo1201.workers.dev/get/${puzzle_id}`)
     const body = await response.text();
     if (!response.ok) {
-        alert(`puzzle id #${puzzle_id} not found`);
+        alert(locale("load.id_not_found", { puzzle_id }));
         if (redirect) location.href = '';
         return;
     }
@@ -80,7 +81,7 @@ export function setup_listeners() {
 
     const button_load_text = document.querySelector<HTMLButtonElement>('#button-load-text')!;
     button_load_text.addEventListener('click', async () => {
-        const text = prompt("Enter base64 code or puzzle id");
+        const text = prompt(locale("load.enter_text"));
         if (!text) return;
 
         const match = text.match(/^#?(\d+)$/);
@@ -95,11 +96,11 @@ export function setup_listeners() {
     button_copy_board.addEventListener('click', async () => {
         const text = selection_to_text(true);
         if (text.includes("0")) {
-            const proceed = confirm("Empty cell detected. Do you want to copy anyway?");
+            const proceed = confirm(locale("export.empty_detected"));
             if (!proceed) return;
         }
         await navigator.clipboard.writeText(text);
-        alert("Board data copied!");
+        alert(locale("export.success"));
     });
 
     const button_open_info = document.querySelector<HTMLButtonElement>('#button-open-info')!;

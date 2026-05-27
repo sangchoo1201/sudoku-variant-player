@@ -3,13 +3,14 @@ import {
     type BoardState,
     type PuzzleData,
     PuzzleDataSchema,
-    type DirectionExtended, type RuleID, PartialPuzzleDataSchema,
+    type DirectionExtended, PartialPuzzleDataSchema,
 } from "./schema.ts";
 import {render_all} from "./render.ts";
 import {redirect_puzzle_id, setup_listeners} from "./input.ts";
 import {init_all, update_all, open_info} from "./cell.ts";
 import {trail_sat_init} from "./sat.ts";
 import {load_state} from "./storage.ts";
+import {is_valid_locale, locale, set_language} from "./i18n/i18n.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
@@ -261,67 +262,6 @@ function setup_grid(puzzle_data: PuzzleData): [CellType[][], HTMLDivElement[], H
     return [cell_map, left, right, top, bottom];
 }
 
-const side_number_description = " (보드 바깥의 숫자는 다른 규칙들과 무관합니다)";
-const side_text_description = " (보드 바깥의 문자는 다른 규칙들과 무관합니다)";
-const rule_description: Record<RuleID, string> = {
-    "[Sudoku]": "스도쿠: 보드판의 모든 칸에 1~9 숫자를 채워야 합니다.",
-    "[R]": "가로열: 보드판의 가로줄에는 같은 숫자가 중복할 수 없습니다.",
-    "[C]": "세로열: 보드판의 세로줄에는 같은 숫자가 중복할 수 없습니다.",
-    "[B]": "박스: 보드판에서 굵은 실선으로 구분된 박스 내부에는 같은 숫자가 중복할 수 없습니다.",
-
-    "[DT]": "디스턴트: 가로 / 세로 / 대각선으로 인접한 칸에 같은 숫자가 중복할 수 없습니다.",
-    "[SG]": "세그먼트: 굵은 실선으로 구분된 세그먼트 내에는 같은 숫자가 중복할 수 없습니다.",
-    "[LK]": "링크: 마름모 모양으로 연결된 두 칸의 숫자는 반드시 1 차이 나야 합니다.",
-    "[LO]": "로터스: 동그라미 표시 된 칸은 상하좌우로 인접한 칸의 숫자들 모두보다 값이 크거나 모두보다 작습니다.",
-    "[MR]": "메트로: 색선으로 표시된 노선 위의 모든 숫자는 순서에 상관없이 중복 없는 연속된 숫자들로 이루어져야 합니다.",
-
-    "[SQ]": "시퀀스: 보드 바깥에 주어진 적색 숫자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다." + side_number_description,
-    "[QT]": "퀀텀: 보드판 바깥에 녹색 숫자 'X Y'가 주어지면, 해당 줄에서 'X번째 숫자가 Y' 및 'Y번째 숫자가 X' 중 정확히 하나가 성립합니다." + side_number_description,
-    "[RG]": "레인지: 보드 바깥에 주어진 청색 숫자들은 해당 줄에서 '1'과 '9' 사이의 거리를 나타냅니다." + side_number_description,
-    "[QD]": "쿼드: 어떤 2×2 영역을 잡아도, 4개의 숫자 중 홀수와 짝수가 각각 하나 이상 존재합니다.",
-    "[RF]": "레퍼런스: 굵은 적색 선으로 표시된 줄이 X번째 줄일 때, 그 줄의 숫자 Y가 있는 칸에서 직교하는 줄의 Y번째 칸에는 반드시 X가 들어갑니다.",
-
-    "[PR]": "프리즘: 빨간 육각형 사이의 두 숫자를 두 자리 수로 읽으면 소수이고, 파란 육각형 사이의 두 숫자를 두 자리 수로 읽으면 제곱수입니다. " +
-        "가로는 왼쪽이 십의 자리, 세로는 위가 십의 자리입니다.",
-    "[TM]": "템퍼러쳐: 파란 영역 내 세 숫자의 합은 10 이하, 초록 영역은 합이 정확히 15, 빨간 영역의 합은 20 이상입니다.",
-    "[RT]": "루트: 회색 숫자가 표시된 칸에서 가장 가까운 같은 숫자까지의 거리는 표시된 값과 같습니다.",
-    "[PO]": "포인트: 삼각형 모양으로 연결된 두 칸에서, 삼각형이 가리키는 쪽이 아닌 쪽보다 숫자가 커야 합니다.",
-    "[ST]": "스텐실: 스텐실 조각을 회전하거나 뒤집어서 보드 위에 놓을 때, 조각의 숫자들이 보드의 숫자와 완전히 일치하는 위치가 존재하면 안 됩니다.",
-
-    "[VT]": "벡터: 삼각형이 표시된 칸의 숫자를 X이라 하면, 그 칸에서 삼각형이 가리키는 방향으로 X칸 이동한 위치에 9가 있습니다.",
-    "[SR]": "스트림: 하늘색 선 위의 칸들은 홀수와 짝수가 번갈아가며 등장해야 합니다.",
-    "[PA]": "페어: 점선 테두리로 표시된 2칸 영역들 중 어느 두 개도 포함된 두 숫자의 쌍이 같을 수 없습니다.",
-    "[IV]": "인버전: 녹색 선의 시작점인 큰 원부터 순서대로 숫자를 읽었을 때, 어떤 숫자가 바로 다음 숫자보다 큰 경우가 정확히 1번 발생합니다.",
-    "[TR]": "트레일: 청색 원이 그려진 칸에서 시작해 주황색 원이 그려진 칸에서 끝나는, 상하좌우로 이동하며, … → 1 → 2 → … → 8 → 9 → 1 → … 순서를 따르는 경로가 존재합니다.",
-
-    "[ES]": "이스케이프: 모든 짝수가 적힌 상하좌우로 인접한 덩어리는 보드판 상단 또는 하단 모서리와 만나야 합니다.",
-    "[TP]": "트리플렛: 대각선 방향으로 연속한 세 칸의 숫자는 증가하거나 감소하는 순서로 나열될 수 없습니다.",
-    "[EP]": "엡실론: 1, 2, 3, 4가 적힌 모든 칸은 상하좌우로 인접해 정확히 3칸의 크기를 갖는 덩어리를 형성합니다.",
-    "[PD]": "프로덕트: 보드 바깥에 주어진 갈색 숫자는 그 줄에서 가장자리부터 3칸의 숫자 곱과 같습니다." + side_number_description,
-    "[BP]": "범퍼: 상하좌우로 인접한 모든 칸과 값이 3 이상 차이나는 칸을 '범퍼'라고 합니다. 각 행과 열에는 정확히 한 개의 '범퍼'가 존재합니다.",
-
-    "[BD]": "브릿지: 보드판 왼쪽 면에 표시된 칸을 시작점으로 하는 서로 교차하지 않는 체인이 X개 존재합니다. " +
-        "'체인'은 보드판의 왼쪽과 오른쪽 끝을 이으며, 가로 또는 대각선으로 이어져 보드를 횡단하는 1-2-3-4-5-6-7-8-9의 순환 순서로 배열된 9개의 숫자로 구성된 그룹입니다.",
-    "[EF]": "리플렉스: 노란색 동그라미 표시된 칸 주변 3×3에서 자신보다 숫자가 낮거나 같은 표시된 칸이 X개 있으면, 그 칸의 숫자는 X입니다.",
-    "[AQ]": "아쿠아리움: 청록색 구역 내에서, 아랫줄의 모든 숫자는 윗줄의 모든 숫자보다 커야 합니다.",
-    "[MT]": "메타: 다이아몬드 기호가 그려진 칸들 중 숫자 X가 있다면, 그 기호 위의 모든 칸들 중 X는 정확히 X개 존재합니다.",
-    "[LK']": "링크': 마름모 모양으로 연결된 두 칸의 숫자는 반드시 1 차이 나야 합니다. 가능한 모든 마름모가 주어집니다.",
-
-    "[PR']": "프리즘': 빨간 육각형 두 개를 사이에 둔 세 숫자를 세 자리 수로 읽으면 소수이고, 파란 육각형 두 개를 사이에 둔 세 숫자를 세 자리 수로 읽으면 제곱수입니다. " +
-        "가로는 왼쪽부터, 세로는 위쪽부터 읽습니다.",
-    "[LO']": "로터스': 동그라미 표시 된 칸의 숫자는 상하좌우로 인접한 칸의 숫자들의 산술평균과 같습니다. (소숫점 버림)",
-    "[QD']": "쿼드': 어떤 2×2 영역을 잡아도, 4개 숫자의 합이 3의 배수가 아닙니다.",
-    "[RT']": "루트': 회색 숫자가 표시된 칸에서 가장 먼 같은 숫자까지의 거리는 표시된 값과 같습니다.",
-    "[SQ']": "시퀀스': 보드 바깥에 주어진 적색 문자들은 해당 줄에서 등장하는 숫자가 표시된 순서와 동일합니다. L은 1-3, M은 4-6, H는 7-9를 대신합니다. " +
-        "(보드 바깥의 문자는 다른 규칙들과 무관합니다.)",
-
-    "[TR']": "트레일': 청색 원이 그려진 칸에서 시작해 주황색 원이 그려진 칸에서 끝나는, 상하좌우로 이동하며 … → 1 → 2 → … → 8 → 9 → 1 → … 순서를 따르는, " +
-        "시작점과 끝점을 제외하면 같은 칸에서 만나지 않는 두 개의 경로가 존재합니다.",
-    "[RG']": "레인지': 보드 바깥에 주어진 청색 알파벳들은 해당 줄에서 '1'과 '9' 사이의 거리를 나타냅니다. " +
-        "'A'~'H'는 1부터 8까지의 숫자와 일대일 대응됩니다." + side_text_description,
-    "[SG']": "세그먼트': 같은 색상으로 구분된 세그먼트 내에는 같은 숫자가 중복할 수 없습니다.",
-}
-
 const info_text = document.getElementById('info-text')!;
 
 function setup_modal(puzzle_data: PuzzleData) {
@@ -335,9 +275,12 @@ function setup_modal(puzzle_data: PuzzleData) {
 
     for (const rule of puzzle_data.rules) {
         const description = document.createElement('p');
-        const text = rule_description[rule.id];
-        if (text) description.innerText = rule.id + ' ' + text;
-        else description.innerText = rule.id + ": ???";
+        const key = `rule.${rule.id}`;
+        if (is_valid_locale(key)) {
+            description.innerText = rule.id + ' ' + locale(key);
+        } else {
+            description.innerText = rule.id + ": ???";
+        }
         info_text.appendChild(description);
     }
 }
@@ -345,6 +288,11 @@ function setup_modal(puzzle_data: PuzzleData) {
 async function main() {
     const query_string = window.location.search;
     const url_params = new URLSearchParams(query_string);
+
+    // temp language selection
+    const language = url_params.get('language');
+    if (language === "ko" || language === "en") set_language(language);
+
     const id = url_params.get('id');
     if (id !== null) {
         const match = id.match(/^#?(\d+)$/);
@@ -360,9 +308,9 @@ async function main() {
     if (!result.success && code !== null) {
         if (!partial_result.success) {
             console.log(partial_result.error);
-            alert("invalid code");
+            alert(locale("load.invalid_code"));
         } else {
-            alert("Some variants are currently not updated!");
+            alert(locale("load.unknown_variant"));
         }
     }
     const puzzle_data: PuzzleData = result.success ? result.data :
