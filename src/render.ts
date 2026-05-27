@@ -22,13 +22,7 @@ import {
 type RenderContext = {
     layer_bottom: SVGSVGElement,
     layer_middle: SVGSVGElement,
-    layer_top: {
-        parent: SVGSVGElement,
-        bridge: SVGGElement,
-        prism: SVGGElement,
-        link: SVGGElement,
-        point: SVGGElement,
-    },
+    layer_top: SVGSVGElement,
 }
 
 type PureRenderer = (ctx: RenderContext) => void;
@@ -257,7 +251,7 @@ const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: Link
         poly.setAttribute("stroke", "black");
         poly.setAttribute("stroke-width", "0.03");
 
-        ctx.layer_top.link.appendChild(poly);
+        ctx.layer_top.appendChild(poly);
     }
 }
 
@@ -378,7 +372,7 @@ const prism_render: Renderer<PrismRule> = function (ctx: RenderContext, rule: Pr
         poly.setAttribute("stroke", "white");
         poly.setAttribute("stroke-width", "0.01");
 
-        ctx.layer_top.prism.appendChild(poly);
+        ctx.layer_top.appendChild(poly);
     }
 }
 
@@ -401,7 +395,7 @@ const point_render: Renderer<PointRule> = function (ctx: RenderContext, rule: Po
         poly.setAttribute("stroke", "white");
         poly.setAttribute("stroke-width", "0.025");
 
-        ctx.layer_top.point.appendChild(poly);
+        ctx.layer_top.appendChild(poly);
     }
 }
 
@@ -539,8 +533,8 @@ const bridge_render: Renderer<BridgeRule> = function (ctx: RenderContext, rule: 
         line.setAttribute("stroke", `hsl(${360 / len * i}, 100%, 43.1%)`);
         line.setAttribute("stroke-width", "0.1");
 
-        ctx.layer_top.bridge.appendChild(line);
-        ctx.layer_top.bridge.appendChild(poly);
+        ctx.layer_top.appendChild(line);
+        ctx.layer_top.appendChild(poly);
     }
 }
 
@@ -586,7 +580,7 @@ const meta_render: Renderer<MetaRule> = function (ctx: RenderContext, rule: Meta
         poly.setAttribute("stroke", "rgba(0, 0, 200, 0.5)");
         poly.setAttribute("stroke-width", "0.02");
 
-        ctx.layer_top.link.appendChild(poly);
+        ctx.layer_bottom.appendChild(poly);
     }
 }
 
@@ -777,20 +771,32 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[ST]": nothing_render,  // TODO
 };
 
+const render_order: Array<RuleID> = [
+    "[RT]", "[RT']",  // bottom - background
+    "[TM]", "[AQ]", "[PA]", "[SG']",  // bottom - cage
+    "[LO]", "[LO']", "[TR]", "[TR']", "[EF]",  // bottom - circle
+    "[VT]", "[MT]",  // bottom - shape
+    "[SR]", "[RF]", "[IV]", "[MR]",  // bottom - line
+
+    "[Sudoku]", "[R]", "[C]", "[B]", "[SG]",  // middle
+
+    "[BD]", "[PR]", "[PR']", "[LK]", "[LK']", "[PO]"  // top
+] as const;
+
+const render_order_key: Partial<Record<RuleID, number>> = Object.fromEntries(render_order.map((value, index) => [value, index]));
+
+const get_key = (rule: Rule) => render_order_key[rule.id] ?? -1;
+
 export function render_all(rules: Rule[]) {
     const ctx: RenderContext = {
         layer_bottom: document.querySelector<SVGSVGElement>("#layer-bottom")!,
         layer_middle: document.querySelector<SVGSVGElement>("#layer-middle")!,
-        layer_top: {
-            parent: document.querySelector<SVGSVGElement>("#layer-top")!,
-            bridge: document.querySelector<SVGGElement>("#layer-top-bridge")!,
-            prism: document.querySelector<SVGGElement>("#layer-top-prism")!,
-            link: document.querySelector<SVGGElement>("#layer-top-link")!,
-            point: document.querySelector<SVGGElement>("#layer-top-point")!,
-        },
+        layer_top: document.querySelector<SVGSVGElement>("#layer-top")!
     };
 
-    for (const rule of rules) {
+    const sorted_rules = [...rules].sort((a, b) => get_key(a) - get_key(b));
+
+    for (const rule of sorted_rules) {
         const id = rule.id;
         const renderer = renderers[id];
         if (!renderer) continue;
