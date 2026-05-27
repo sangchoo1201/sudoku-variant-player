@@ -187,6 +187,12 @@ html, body, #app {
 
     font-size: 2.8cqw;  /* ⭐ 핵심: 상대 크기 */
     color: rgb(29, 106, 229);
+    
+    text-shadow:
+        -1px -1px 0 white,
+         1px -1px 0 white,
+        -1px  1px 0 white,
+         1px  1px 0 white;
 }
 
 .cell.filled .corner {
@@ -203,6 +209,12 @@ html, body, #app {
 
     font-size: 2.5cqw;
     color: rgb(29, 106, 229);
+    
+    text-shadow:
+        -1px -1px 0 white,
+         1px -1px 0 white,
+        -1px  1px 0 white,
+         1px  1px 0 white;
 }
 
 .cell.filled .center {
