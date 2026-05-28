@@ -21,9 +21,13 @@ export function is_valid_locale(key: string): key is TranslationKey {
 }
 
 export function locale(
-    key: TranslationKey,
+    key: string,
     params?: Record<string, string | number>
 ): string {
+    if (!is_valid_locale(key)) {
+        return key;
+    }
+
     let text = locales[current_language][key] ?? key;
 
     if (params) {
