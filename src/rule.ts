@@ -821,7 +821,6 @@ const epsilon_check: PureCheckingFunction = function (solving_state: SolvingStat
                 }
             }
         }
-        console.log(queue);
         return [queue.filter(([_, b]) => b === 0).map(([p, _]) => p), queue.filter(([_, b]) => b !== 0).map(([p, _]) => p)];
     }
 
@@ -968,7 +967,7 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
         const result = dfs([[start, 0]], null, new Set<number>());
         if (result === null) {
             errors.add([start, 0]);
-        } else {
+        } else if (solving_state.board[start][0].number !== null) {
             result.forEach(([r, c]) => { min_row[c] = Math.max(min_row[c], r) });
         }
     }
