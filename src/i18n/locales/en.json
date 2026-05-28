@@ -56,5 +56,6 @@
 
   "rule.[TR']": "Trail': There exist two paths starting at the blue circle and ending at the orange circle that move orthogonally and follow the sequence … → 1 → 2 → … → 8 → 9 → 1 → …, and do not overlap except at the start and end cells.",
   "rule.[RG']": "Range': Blue letters outside the grid indicate the distance between '1' and '9' in the corresponding row or column. 'A'-'H' correspond one-to-one with the numbers 1-8, in any order. (letters outside the grid does not affect any other rules)",
-  "rule.[SG']": "Segment': Each colored segments cannot have duplicate digits."
+  "rule.[SG']": "Segment': Each colored segments cannot have duplicate digits.",
+  "rule.[R']": "Row': Each row must contain exactly eight distinct digits. The one missing digit is different for every row."
 }

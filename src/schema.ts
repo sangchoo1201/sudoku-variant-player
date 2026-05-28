@@ -562,9 +562,13 @@ const SegmentPrimeRuleSchema = z.object({
     id: z.literal("[SG']"),
     render_state: z.object({
         regions: z.array(z.array(PositionSchema)),
-    })
+    }),
 });
 export type SegmentPrimeRule = z.infer<typeof SegmentPrimeRuleSchema>;
+
+const RowPrimeRuleSchema = z.object({
+    id: z.literal("[R']"),
+});
 
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
@@ -617,6 +621,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     RangePrimeRuleSchema,
     TrailPrimeRuleSchema,
     SegmentPrimeRuleSchema,
+    RowPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

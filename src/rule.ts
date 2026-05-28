@@ -1317,9 +1317,68 @@ const trail_prime_check: RuleCheckingFunction<TrailPrimeRule> = function (
     return trail_check(solving_state, trail_rule);
 }
 
+const row_prime_check: PureCheckingFunction = function (solving_state: SolvingState): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const missing: Record<Digit, Array<BoardCoord>> = digits.reduce(
+        (acc, d) => {
+            acc[d] = [];
+            return acc;
+        },
+        {} as Record<Digit, Array<BoardCoord>>
+    );
+
+    for (const r of board_coords) {
+        const record: Record<Digit, Array<BoardCoord>> = digits.reduce(
+            (acc, d) => {
+                acc[d] = [];
+                return acc;
+            },
+            {} as Record<Digit, Array<BoardCoord>>
+        );
+        const set = new Set<Digit>();
+        const duplicates = new Set<Digit>();
+
+        for (const c of board_coords) {
+            const v = solving_state.board[r][c].number;
+            if (v === null) continue;
+            record[v].push(c);
+            set.add(v);
+            if (record[v].length >= 2) {
+                duplicates.add(v);
+            }
+        }
+
+        if (duplicates.size >= 2) {
+            for (const duplicate of duplicates) {
+                errors.add_all(record[duplicate].map(c => [r, c]));
+            }
+        } else if (set.size === 9) {
+            errors.add_all(board_coords.map(c => [r, c]));
+        } else if (set.size === 8) {
+            for (const d of digits) {
+                if (!set.has(d)) {
+                    missing[d].push(r);
+                }
+            }
+        }
+    }
+
+    for (const d of digits) {
+        if (missing[d].length >= 2) {
+            for (const r of missing[d]) {
+                errors.add_all(board_coords.map(c => [r, c]));
+            }
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (state: SolvingState, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
+    "[R']": row_prime_check,
     "[C]": column_check,
     "[B]": box_check,
     "[DT]": distant_check,

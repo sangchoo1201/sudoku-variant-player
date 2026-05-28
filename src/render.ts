@@ -206,6 +206,17 @@ const row_render: PureRenderer = function (ctx: RenderContext) {
     }
 }
 
+const row_prime_render: PureRenderer = function (ctx: RenderContext) {
+    const d = 0.035;
+    for (let i = 0; i <= 9; i++) {
+        const line = generate_line([-d / 2, i], [9 + d / 2, i]);
+        line.setAttribute("stroke", "rgb(170, 119, 119)");
+        line.setAttribute("stroke-width", d.toString());
+
+        ctx.layer_middle.appendChild(line);
+    }
+}
+
 const column_render: PureRenderer = function (ctx: RenderContext) {
     const d = 0.035;
     for (let i = 0; i <= 9; i++) {
@@ -729,6 +740,7 @@ const range_prime_render: Renderer<RangePrimeRule> = (ctx: RenderContext, rule: 
 const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[Sudoku]": sudoku_render,
     "[R]": row_render,
+    "[R']": row_prime_render,
     "[C]": column_render,
     "[B]": box_render,
     "[DT]": nothing_render,
@@ -778,7 +790,7 @@ const render_order: Array<RuleID> = [
     "[VT]", "[MT]",  // bottom - shape
     "[SR]", "[RF]", "[IV]", "[MR]",  // bottom - line
 
-    "[Sudoku]", "[R]", "[C]", "[B]", "[SG]",  // middle
+    "[Sudoku]", "[R]", "[R']", "[C]", "[B]", "[SG]",  // middle
 
     "[BD]", "[PR]", "[PR']", "[LK]", "[LK']", "[PO]"  // top
 ] as const;
