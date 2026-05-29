@@ -1455,6 +1455,22 @@ function memo_duplicate_check(
     }
 }
 
+function memo_pair_check(
+    solving_state: SolvingState, adjacent: readonly (readonly [number, number])[], error_board: Set<Digit>[][]
+) {
+    for (const [r, c] of position_generator()) {
+        const v = solving_state.board[r][c].number;
+        if (v === null) continue;
+
+        const neighbors = adjacent
+            .map(([dr, dc]) => [r + dr, c + dc] as [number, number])
+            .filter(is_pos);
+        for (const [nr, nc] of neighbors) {
+            error_board[nr][nc].add(v);
+        }
+    }
+}
+
 export function check_memo(
     solving_state: SolvingState, rules: Rule[]
 ): Set<Digit>[][] {
@@ -1476,6 +1492,9 @@ export function check_memo(
         }
         if (rule.id === "[SG']") {
             memo_duplicate_check(solving_state, (region, index) => rule.render_state.regions[region][index], error_board, [16, 5]);
+        }
+        if (rule.id === "[DT]") {
+            memo_pair_check(solving_state, king_adjacent, error_board);
         }
     }
 
