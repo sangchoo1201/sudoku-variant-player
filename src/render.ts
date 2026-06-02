@@ -285,9 +285,7 @@ const lotus_render: Renderer<LotusRule, [string?]> = function (
 const metro_render: Renderer<MetroRule> = function (ctx: RenderContext, rule: MetroRule) {
     const length = rule.render_state.metros.length;
     for (const [i, metro] of rule.render_state.metros.entries()) {
-        let h = 300 / length * i;
-        if (h >= 150) h += 60;
-        const color = `hsla(${h}, 80%, 40%, 0.4)`;
+        const color = `hsla(${360 / length * i}, 90%, 45%, 0.4)`;
         for (const [r, c] of metro) {
             const circle = generate_circle(pos_to_coord([r, c]));
             circle.setAttribute("r", "0.06");
