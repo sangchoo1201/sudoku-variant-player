@@ -99,6 +99,14 @@ function create_error_collector() {
     }
 }
 
+function is_board_filled(solving_state: SolvingState): boolean {
+    for (const [r, c] of position_generator()) {
+        const v = solving_state.board[r][c].number;
+        if (v === null) return false;
+    }
+    return true;
+}
+
 function generate_get_pos(direction: Direction, index: BoardCoord): (x: BoardCoord) => Position {
     switch (direction) {
         case "ROW":
@@ -761,10 +769,12 @@ const trail_check: RuleCheckingFunction<TrailRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    const result = trail_sat_solve(solving_state.board);
-    if (!result) {
-        errors.add(rule.render_state.start);
-        errors.add(rule.render_state.end);
+    if (is_board_filled(solving_state)) {
+        const result = trail_sat_solve(solving_state.board);
+        if (!result) {
+            errors.add(rule.render_state.start);
+            errors.add(rule.render_state.end);
+        }
     }
 
     return errors.result();
@@ -931,6 +941,10 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
     solving_state: SolvingState, rule: BridgeRule,
 ): RuleCheckingResult {
     const errors = create_error_collector();
+
+    if (!is_board_filled(solving_state)) {
+        return errors.result();
+    }
 
     const encode = ([r, c]: Position, n: Digit | null): number =>
         r * 100 + c * 10 + (n ?? 0);
