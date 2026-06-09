@@ -245,8 +245,8 @@ export function set_last_cell([r, c]: Position) {
     cell.classList.add('selected-last');
 }
 
-export function add_selection(pos: Position, is_last: boolean = true) {
-    if (selected.has(encode(pos))) return;
+export function add_selection(pos: Position, is_last: boolean = true, allow_selected: boolean = false) {
+    if (selected.has(encode(pos)) && !allow_selected) return;
     selected.add(encode(pos));
     const [r, c] = pos;
     const cell = cell_map[r][c].cell;

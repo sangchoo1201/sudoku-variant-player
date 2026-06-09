@@ -55,6 +55,28 @@ function config_input_mode() {
     show_current_input_mode();
 }
 
+export function move_selection(code: string, multi_select: boolean, new_position: Position | null = null) {
+    const last_cell = get_last_cell();
+    const direction = direction_map[code];
+    if (direction === undefined || last_cell === null && new_position === null) return;
+
+    let nr = 0, nc = 0;
+    if (last_cell) {
+        const r = Number(last_cell.dataset.row);
+        const c = Number(last_cell.dataset.col);
+        const [dr, dc] = direction;
+        nr = (r + dr + 9) % 9;
+        nc = (c + dc + 9) % 9;
+    } else if (new_position !== null) {
+        [nr, nc] = new_position;
+    }
+
+    if (!multi_select) {
+        reset_selection();
+    }
+    add_selection([nr, nc] as Position, true, true);
+}
+
 export function setup_listeners() {
     for (const [input_mode, button_id] of [
         [InputMode.Normal, 'button-normal'],
@@ -116,22 +138,6 @@ export function setup_listeners() {
     const button_redo = document.querySelector<HTMLButtonElement>('#button-redo')!;
     button_redo.addEventListener('click', redo);
 
-    function move_selection(code: string) {
-        const last_cell = get_last_cell();
-        const direction = direction_map[code];
-        if (direction === undefined || last_cell === null) return;
-
-        const r = Number(last_cell.dataset.row);
-        const c = Number(last_cell.dataset.col);
-        const [dr, dc] = direction;
-        const nr = (r + dr + 9) % 9, nc = (c + dc + 9) % 9;
-
-        if (!(modifiers.shift || modifiers.control)) {
-            reset_selection();
-        }
-        add_selection([nr, nc] as Position);
-    }
-
     window.addEventListener('keydown', (e) => {
         if (e.repeat) return; // 꾹 누름 방지
 
@@ -167,7 +173,7 @@ export function setup_listeners() {
 
         for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD'] as const) {
             if (code === key) {
-                move_selection(code);
+                move_selection(code, modifiers.shift || modifiers.control);
                 return;
             }
         }
@@ -194,7 +200,7 @@ export function setup_listeners() {
 
         // 방향키 이동
         if (code.startsWith('Arrow')) {
-            move_selection(code);
+            move_selection(code, modifiers.shift || modifiers.control);
             return;
         }
 
