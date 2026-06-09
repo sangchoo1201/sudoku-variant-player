@@ -11,6 +11,7 @@ import {init_all, update_all, open_info} from "./cell.ts";
 import {trail_sat_init} from "./sat.ts";
 import {load_state} from "./storage.ts";
 import {is_valid_locale, locale, set_language} from "./i18n/i18n.ts";
+import {update_gamepad} from "./gamepad.ts";
 
 const default_data: PuzzleData = {
     id: "#00000",
@@ -327,6 +328,7 @@ async function main() {
     const [cell_map, left, right, top, bottom] = setup_grid(puzzle_data);
     init_all(cell_map, left, right, top, bottom, solving_state, puzzle_data.rules, puzzle_data.id);
     render_all(puzzle_data.rules);
+    update_gamepad();
     setup_listeners();
     setup_modal(puzzle_data);
     for (const rule of puzzle_data.rules) {

@@ -184,18 +184,22 @@ export function open_info(): void {
 }
 
 export function close_info(): boolean {
-    const shown = modal.classList.contains('show-modal');
+    const shown = is_info_shown();
     modal.classList.remove('show-modal');
     return shown;
+}
+
+export function is_info_shown(): boolean {
+    return modal.classList.contains('show-modal');
 }
 
 export function show_current_input_mode() {
     const mode = get_input_mode();
     for (const [m, button] of Object.entries(mode_buttons) as [InputMode, HTMLButtonElement][]) {
         if (m === mode) {
-            button.classList.add("selected-mode");
+            button.classList.add("selected-button");
         } else {
-            button.classList.remove("selected-mode");
+            button.classList.remove("selected-button");
         }
     }
     const hidden = mode !== InputMode.Color;
