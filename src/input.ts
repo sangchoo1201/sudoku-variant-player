@@ -247,8 +247,8 @@ export function setup_listeners() {
             return;
         }
 
-        const controls = (e.target as HTMLElement).closest('#controls');
-        if (controls) return;
+        const buttons = (e.target as HTMLElement).closest('button');
+        if (buttons) return;
 
         const target = (e.target as HTMLElement).closest('.cell') as HTMLDivElement;
         if (!target) {
