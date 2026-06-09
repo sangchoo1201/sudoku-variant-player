@@ -29,6 +29,7 @@ const direction_map: Partial<Record<string, [number, number]>> = {
 
 let drag_mode: DragMode = DragMode.None;
 let active_pointer_id: number | null = null;
+let pointerdown_position: [number, number] = [0, 0];
 const modifiers = {
     shift: false,
     control: false,
@@ -239,6 +240,7 @@ export function setup_listeners() {
     window.addEventListener('pointerdown', (e) => {
         if (active_pointer_id !== null) return;
         active_pointer_id = e.pointerId;
+        pointerdown_position = [e.clientX, e.clientY];
 
         const modal = (e.target as HTMLElement).closest('#info-modal');
         if (modal) {
@@ -290,6 +292,11 @@ export function setup_listeners() {
     window.addEventListener('pointermove', (e) => {
         if (e.pointerId !== active_pointer_id) return;
         if (drag_mode === DragMode.None) return;
+
+        const [ax, ay] = pointerdown_position;
+        const bx = e.clientX, by = e.clientY;
+        if (Math.abs(ax - bx) + Math.abs(ay - by) < 5) return;
+        pointerdown_position = [-10, -10];
 
         const target = document.elementFromPoint(e.clientX, e.clientY)
             ?.closest('.cell') as HTMLDivElement;
