@@ -1307,9 +1307,16 @@ const row_prime_check: PureCheckingFunction = function (board_getter: BoardGette
             if (record[v].length == 2) {
                 duplicates.add(v);
             }
+            if (record[v].length == 3) {
+                triples.add(v);
+            }
         }
 
-        if (duplicates.size >= 2) {
+        if (triples.size >= 1) {
+            for (const triple of triples) {
+                errors.add_all(record[triple].map(c => [r, c]));
+            }
+        } else if (duplicates.size >= 2) {
             for (const duplicate of duplicates) {
                 errors.add_all(record[duplicate].map(c => [r, c]));
             }
