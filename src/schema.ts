@@ -13,18 +13,11 @@ const BoardCoordSchema = z.union([
 ]);
 export type BoardCoord = z.infer<typeof BoardCoordSchema>;
 export const board_coords = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
-
-export function is_coord(n: number): n is BoardCoord {
-    return Number.isInteger(n) && 0 <= n && n < 9;
-}
+export const is_coord = (n: number): n is BoardCoord => Number.isInteger(n) && 0 <= n && n < 9;
 
 const PositionSchema = z.tuple([BoardCoordSchema, BoardCoordSchema]);
 export type Position = z.infer<typeof PositionSchema>;
-
-export function is_pos(p: [number, number]): p is Position {
-    const [r, c] = p;
-    return is_coord(r) && is_coord(c);
-}
+export const is_pos = (p: [number, number]): p is Position => is_coord(p[0]) && is_coord(p[1]);
 
 export type Side = "left" | "right" | "top" | "bottom";
 export type PositionExtended =
@@ -34,7 +27,7 @@ export type PositionExtended =
     ["top", BoardCoord] |
     ["bottom", BoardCoord];
 
-export function* position_generator(
+export function* generate_positions(
     [r1, c1]: Position = [0, 0], [r2, c2]: Position = [8, 8]
 ): Generator<Position> {
     for (const r of board_coords) {
@@ -57,6 +50,7 @@ const DigitSchema = z.union([
 ]);
 export type Digit = z.infer<typeof DigitSchema>;
 export const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+export const is_digit = (n: number): n is Digit => Number.isInteger(n) && 1 <= n && n <= 9;
 
 const DigitOrZeroSchema = z.union([DigitSchema, z.literal(0)]);
 export type DigitOrZero = z.infer<typeof DigitOrZeroSchema>;
@@ -570,6 +564,10 @@ const RowPrimeRuleSchema = z.object({
     id: z.literal("[R']"),
 });
 
+const BlockRuleSchema = z.object({
+    id: z.literal("[BL]"),
+});
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -622,6 +620,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     TrailPrimeRuleSchema,
     SegmentPrimeRuleSchema,
     RowPrimeRuleSchema,
+    BlockRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

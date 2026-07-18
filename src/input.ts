@@ -1,4 +1,4 @@
-import {type BoardCoord, type Position, position_generator} from "./schema.ts";
+import {type BoardCoord, type Position, generate_positions} from "./schema.ts";
 import {
     add_selection, apply_value, clear_value, cycle_default_input_mode,
     get_last_cell, get_single_selection_or_null,
@@ -165,7 +165,7 @@ export function setup_listeners() {
 
         if (modifiers.control && code === 'KeyA') {
             e.preventDefault();
-            for (const [r, c] of position_generator()) {
+            for (const [r, c] of generate_positions()) {
                 add_selection([r, c], false);
             }
             return;

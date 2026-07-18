@@ -1,7 +1,7 @@
 import {
     type BoardChange, type CompressedBoardChange,
     type CompressedSolvingState,
-    CompressedSolvingStateSchema, type Digit, type Position, position_generator,
+    CompressedSolvingStateSchema, type Digit, type Position, generate_positions,
     type SolvingState,
     SolvingStateSchema
 } from "./schema.ts";
@@ -44,7 +44,7 @@ function compress_pos(pos: Position[]): number | string {
 
     const set = new Set<number>(pos.map(pos_to_number));
     const bits: boolean[] = [];
-    for (const p of position_generator()) {
+    for (const p of generate_positions()) {
         bits.push(set.has(pos_to_number(p)));
     }
     const bytes = new Uint8Array(11);
@@ -76,7 +76,7 @@ function extract_pos(value: number | string): Position[] {
     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
 
     let i = 0;
-    for (const p of position_generator()) {
+    for (const p of generate_positions()) {
         if ((bytes[i >> 3] >> (i & 7) & 1) !== 0) {
             pos.push(p);
         }

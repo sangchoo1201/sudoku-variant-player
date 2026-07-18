@@ -4,7 +4,7 @@ import {
     type Position,
     digits,
     is_pos,
-    position_generator
+    generate_positions
 } from "./schema.ts";
 import type {BoardGetter} from "./rule.ts";
 
@@ -25,12 +25,12 @@ const conditions: any[] = [];
 
 export function trail_sat_init(start: Position, end: Position, prime: boolean) {
     // All cells have exactly one value
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         conditions.push(Logic.exactlyOne(digits.map(v => CELL(pos, v))));
     }
 
     // For every edge pos1 -> pos2, v2 should be (v1 % 9 + 1)
-    for (const pos1 of position_generator()) {
+    for (const pos1 of generate_positions()) {
         for (const pos2 of get_neighbors(pos1)) {
             for (const v of digits) {
                 conditions.push(Logic.implies(Logic.and(EDGE(pos1, pos2), CELL(pos1, v)), CELL(pos2, v % 9 + 1 as Digit)));
@@ -60,7 +60,7 @@ export function trail_sat_init(start: Position, end: Position, prime: boolean) {
 
     // Every other cells can have at most one in/out edge
     // If so, it should be a pair
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         const out_edges = get_neighbors(pos).map(next => EDGE(pos, next));
         const in_edges = get_neighbors(pos).map(prev => EDGE(prev, pos));
         if (is_equal(pos, start) || is_equal(pos, end)) continue;
@@ -78,7 +78,7 @@ export function trail_sat_solve(board_getter: BoardGetter): boolean {
     const solver = new Logic.Solver();
 
     // Fix positions' value
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         const v = board_getter(pos);
         if (v === null) continue;
         solver.require(CELL(pos, v));

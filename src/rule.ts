@@ -11,7 +11,7 @@ import {
     type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule, type RangePrimeRule,
     type TrailPrimeRule, type SegmentPrimeRule,
     board_coords, digits,
-    is_coord, is_pos, is_digit, position_generator,
+    is_coord, is_pos, is_digit, generate_positions,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -83,7 +83,7 @@ function create_error_collector() {
 }
 
 function is_board_filled(board_getter: BoardGetter): board_getter is (p: Position) => Digit {
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         if (board_getter(pos) === null) return false;
     }
     return true;
@@ -178,7 +178,7 @@ function generic_pair_check(
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         const v = board_getter(pos);
         if (v === null) continue;
 
@@ -193,7 +193,7 @@ function generic_pair_check(
 }
 
 const sudoku_check: PureCheckingFunction = (board_getter: BoardGetter): RuleCheckingResult => {
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         if (board_getter(pos) === null) return [false, []];
     }
     return no_error;
@@ -411,7 +411,7 @@ const quad_check: PureCheckingFunction = function (
     const errors = create_error_collector();
     const quad_adjacent = [[0, 0], [0, 1], [1, 0], [1, 1]] as const;
 
-    for (const pos of position_generator([0, 0], [7, 7])) {
+    for (const pos of generate_positions([0, 0], [7, 7])) {
         const quad = get_neighbors(quad_adjacent, pos);
         let has_even = false, has_odd = false;
         for (const new_pos of quad) {
@@ -521,7 +521,7 @@ const root_check: RuleCheckingFunction<RootRule, [boolean?]> = function (
         if (v === null) continue;
 
         let has_exact = false, has_close = false, has_far = false;
-        for (const [nr, nc] of position_generator()) {
+        for (const [nr, nc] of generate_positions()) {
             const d = (r - nr) ** 2 + (c - nc) ** 2;
             if (d === 0) continue;
             const nv = board_getter([nr, nc]);
@@ -557,7 +557,7 @@ const point_check: RuleCheckingFunction<PointRule> = function (
 }
 
 function match_piece(board_getter: BoardGetter, positions: [Position, Digit][]): Position[] {
-    for (const [r, c] of position_generator()) {
+    for (const [r, c] of generate_positions()) {
         if (positions.every(
             ([[dr, dc], v]) => {
                 const new_pos = [r + dr, c + dc] as [number, number];
@@ -724,7 +724,7 @@ const escape_check: PureCheckingFunction = function (board_getter: BoardGetter):
     const bfs = generate_bfs(visited, condition);
 
     loop:
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         if (visited.has(encode(pos)) || !condition(pos)) continue;
 
         const region = bfs(pos);
@@ -759,7 +759,7 @@ const trail_check: RuleCheckingFunction<TrailRule> = function (
 const triplet_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
     const errors = create_error_collector();
 
-    for (const p2 of position_generator([1, 1], [7, 7])) {
+    for (const p2 of generate_positions([1, 1], [7, 7])) {
         const v2 = board_getter(p2);
         if (v2 === null) continue;
 
@@ -791,7 +791,7 @@ const epsilon_check: PureCheckingFunction = function (board_getter: BoardGetter)
     }
     const bfs = generate_bfs(visited, condition);
 
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         const v = board_getter(pos);
         if (v === null || !condition(pos)) continue;
         const region = bfs(pos);
@@ -850,7 +850,7 @@ const bumper_check: PureCheckingFunction = function (board_getter: BoardGetter):
     const errors = create_error_collector();
 
     const bumper: (boolean | null)[][] = Array.from( {length: 9}, _ => Array(9).fill(null) );
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         const v = board_getter(pos);
         let possible = v === null ? new Set<Digit>(digits) : new Set<Digit>([v]);
         let filled_count = 0;
@@ -1052,7 +1052,7 @@ const link_prime_check: RuleCheckingFunction<LinkPrimeRule> = function (
     }
 
     const downright_adjacent = [[0, 1], [1, 0]] as const;
-    for (const p1 of position_generator()) {
+    for (const p1 of generate_positions()) {
         for (const p2 of get_neighbors(downright_adjacent, p1)) {
             const v1 = board_getter(p1), v2 = board_getter(p2);
             if (v1 === null || v2 === null) continue;
@@ -1148,7 +1148,7 @@ const quad_prime_check: PureCheckingFunction = function (board_getter: BoardGett
     const quad_adjacent = [[0, 0], [0, 1], [1, 0], [1, 1]] as const;
 
     next:
-    for (const pos of position_generator([0, 0], [7, 7])) {
+    for (const pos of generate_positions([0, 0], [7, 7])) {
         const quad = get_neighbors(quad_adjacent, pos);
         let sum = 0;
         for (const new_pos of quad) {
@@ -1340,6 +1340,43 @@ const row_prime_check: PureCheckingFunction = function (board_getter: BoardGette
     return errors.result();
 }
 
+const block_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    const visited = new Set<string>();
+    const condition_low = (pos: Position) => {
+        const v = board_getter(pos);
+        return v === 1 || v === 2 || v === 3;
+    };
+    const condition_high = (pos: Position) => {
+        const v = board_getter(pos);
+        return v === 7 || v === 8 || v === 9;
+    };
+
+    const bfs_low = generate_bfs(visited, condition_low);
+    const bfs_high = generate_bfs(visited, condition_high);
+
+    for (const pos of generate_positions()) {
+        if (visited.has(encode(pos))) continue;
+
+        let region: Position[] | null = null;
+        if (condition_low(pos)) region = bfs_low(pos);
+        if (condition_high(pos)) region = bfs_high(pos);
+        if (region === null) continue;
+
+        const min_row = Math.min(...region.map(([r, _]) => r)) as BoardCoord;
+        const max_row = Math.max(...region.map(([r, _]) => r)) as BoardCoord;
+        const min_col = Math.min(...region.map(([_, c]) => c)) as BoardCoord;
+        const max_col = Math.max(...region.map(([_, c]) => c)) as BoardCoord;
+
+        if (region.length !== (max_row - min_row + 1) * (max_col - min_col + 1)) continue;
+        if (region.some(pos => get_neighbors(adjacent, pos).some(new_pos => board_getter(new_pos) === null))) continue;
+        errors.add_all(region);
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1353,6 +1390,7 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[EP]": epsilon_check,
     "[BP]": bumper_check,
     "[QD']": quad_prime_check,
+    "[BL]": block_check,
     "[SG]": (state, rule) => segment_check(state, rule as SegmentRule),
     "[LK]": (state, rule) => link_check(state, rule as LinkRule),
     "[LO]": (state, rule) => lotus_check(state, rule as LotusRule),
@@ -1422,7 +1460,7 @@ function memo_duplicate_check(
 function memo_pair_check(
     board_getter: BoardGetter, adjacent: readonly (readonly [number, number])[], error_board: Set<Digit>[][]
 ) {
-    for (const pos of position_generator()) {
+    for (const pos of generate_positions()) {
         const v = board_getter(pos);
         if (v === null) continue;
 

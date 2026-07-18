@@ -3,7 +3,7 @@ import {
     type BoardChange,
     type Digit, type DigitOrZero, digits,
     type Position,
-    position_generator,
+    generate_positions,
     type PositionExtended,
     type Rule, type SingleMemoDelete, type SingleNumberChange,
     type SolvingState
@@ -272,7 +272,7 @@ export function remove_selection(pos: Position) {
 
 export function reset_selection() {
     selected.clear();
-    for (const [r, c] of position_generator()) {
+    for (const [r, c] of generate_positions()) {
         const cell = cell_map[r][c].cell;
         cell.classList.remove('selected');
         cell.classList.remove('selected-last');
@@ -320,13 +320,13 @@ export function select_all_value(value: string, mode: InputMode = get_input_mode
 
     if (mode === InputMode.Normal) {
         const number = Number(value);
-        for (const [i, j] of position_generator()) {
+        for (const [i, j] of generate_positions()) {
             if (solving_state.board[i][j].number === number) {
                 add_selection([i, j], false);
             }
         }
     } else {
-        for (const [i, j] of position_generator()) {
+        for (const [i, j] of generate_positions()) {
             const cell = solving_state.board[i][j];
             let set: Record<string, true>;
             if (mode === InputMode.Color) {
@@ -507,7 +507,7 @@ const memo_modify = {
 } as const;
 
 export function update_all() {
-    for (const p of position_generator()) {
+    for (const p of generate_positions()) {
         for (const f of [normal_modify, corner_modify, center_modify, color_modify]) {
             f(p, Modify.nothing());
         }
@@ -519,7 +519,7 @@ function show_completed() {
     if (!has_basic) return;
 
     const counts = Array(10).fill(0);
-    for (const [r, c] of position_generator()) {
+    for (const [r, c] of generate_positions()) {
         const v = solving_state.board[r][c].number;
         if (v !== null) counts[v]++;
     }
@@ -672,7 +672,7 @@ export function show_errors() {
     }
 
     const error_board = check_memo(solving_state, rules);
-    for (const [r, c] of position_generator()) {
+    for (const [r, c] of generate_positions()) {
         const set = error_board[r][c];
         const cell = cell_map[r][c];
         for (const digit of set) {
@@ -685,7 +685,7 @@ export function show_errors() {
 export function selection_to_text(select_all: boolean = false): string {
     let texts: string[][] = [[], [], [], [], [], [], [], [], []];
     let mn_row = 8, mx_row = 0, mn_col = 8, mx_col = 0;
-    for (const [r, c] of position_generator()) {
+    for (const [r, c] of generate_positions()) {
         if (!(selected.has(encode([r, c])) || select_all)) {
             texts[r].push(" ");
             continue;
