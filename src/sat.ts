@@ -1,12 +1,12 @@
 import Logic from "logic-solver";
 import {
-    type BoardState,
     type Digit,
-    digits,
     type Position,
+    digits,
     is_pos,
     position_generator
 } from "./schema.ts";
+import type {BoardGetter} from "./rule.ts";
 
 const adjacent = [[0, -1], [0, 1], [-1, 0], [1, 0]] as const;
 
@@ -74,14 +74,14 @@ export function trail_sat_init(start: Position, end: Position, prime: boolean) {
     }
 }
 
-export function trail_sat_solve(board: BoardState): boolean {
+export function trail_sat_solve(board_getter: BoardGetter): boolean {
     const solver = new Logic.Solver();
 
     // Fix positions' value
-    for (const [r, c] of position_generator()) {
-        const v = board[r][c].number;
+    for (const pos of position_generator()) {
+        const v = board_getter(pos);
         if (v === null) continue;
-        solver.require(CELL([r, c], v));
+        solver.require(CELL(pos, v));
     }
 
     for (const cond of conditions) {
