@@ -129,7 +129,9 @@ function generate_get_pos_extended(direction: DirectionExtended, index: BoardCoo
     }
 }
 
-function generate_bfs(visited: Set<string>, condition: (p: Position) => boolean): (p: Position) => Position[] {
+function generate_bfs(
+    visited: Set<string>, condition: (p: Position) => boolean, adj: readonly (readonly [number, number])[] = adjacent
+): (p: Position) => Position[] {
     function bfs(start: Position): Position[] {
         const queue: Position[] = [start];
         let head = 0;
@@ -137,7 +139,7 @@ function generate_bfs(visited: Set<string>, condition: (p: Position) => boolean)
 
         while (head < queue.length) {
             const pos = queue[head++];
-            for (const new_pos of get_neighbors(adjacent, pos)) {
+            for (const new_pos of get_neighbors(adj, pos)) {
                 if (visited.has(encode(new_pos))) continue;
                 if (condition(new_pos)) {
                     queue.push(new_pos);
@@ -796,8 +798,12 @@ const triplet_check: PureCheckingFunction = function (board_getter: BoardGetter)
     return errors.result();
 }
 
-const epsilon_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
+const epsilon_check: RuleCheckingFunction<Rule, [boolean?]> = function (
+    board_getter: BoardGetter, _, prime: boolean = false
+): RuleCheckingResult {
     const errors = create_error_collector();
+
+    const size = prime ? 5 : 3;
 
     const visited = new Set<string>();
     const condition = (pos: Position) => {
@@ -808,9 +814,10 @@ const epsilon_check: PureCheckingFunction = function (board_getter: BoardGetter)
 
     for (const pos of generate_positions()) {
         const v = board_getter(pos);
-        if (v === null || !condition(pos)) continue;
+        if (v === null || visited.has(encode(pos)) || !condition(pos)) continue;
         const region = bfs(pos);
-        if (region.length > 3) {
+        if (region.length === size) continue;
+        if (region.length > size) {
             errors.add_all(region);
             continue;
         }
