@@ -60,5 +60,6 @@
   "rule.[R']": "Row': Each row must contain exactly eight distinct digits. The one missing digit is different for every row.",
   "rule.[BL]": "Block: Orthogonally connected regions of cells containing 1/2/3 may not form rectangles. The same rule applies to cells containing 7/8/9.",
 
-  "rule.[B']": "Box': The two numbers in the upper-left corner of a box, in either order, represent the sums of the digits in the shaded and unshaded cells within that box."
+  "rule.[B']": "Box': The two numbers in the upper-left corner of a box, in either order, represent the sums of the digits in the shaded and unshaded cells within that box.",
+  "rule.[VT']": "Vector': If a cell containing a triangle has digit X, then the cell located X cells away in the direction the triangle points contains digit greater than X."
 }

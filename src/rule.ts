@@ -11,7 +11,7 @@ import {
     type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule, type RangePrimeRule,
     type TrailPrimeRule, type SegmentPrimeRule,
     board_coords, digits,
-    is_coord, is_pos, is_digit, generate_positions, type BoxPrimeRule,
+    is_coord, is_pos, is_digit, generate_positions, type BoxPrimeRule, type VectorPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -612,8 +612,8 @@ const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
     "D": [1, 0],
 };
 
-const vector_check: RuleCheckingFunction<VectorRule> = function (
-    board_getter: BoardGetter, rule: VectorRule
+const vector_check: RuleCheckingFunction<VectorRule, [boolean?]> = function (
+    board_getter: BoardGetter, rule: VectorRule, prime: boolean = false
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
@@ -625,13 +625,14 @@ const vector_check: RuleCheckingFunction<VectorRule> = function (
         const v = board_getter(pos);
         if (v === null) {
             const cells: Position[] = [pos];
-            const new_pos: [number, number] = [r + dr, c + dc];
+            let i = 1;
+            let new_pos: [number, number] = [r + dr, c + dc];
             while (is_pos(new_pos)) {
-                cells.push([...new_pos]);
+                cells.push(new_pos);
                 const nv = board_getter(new_pos);
-                if (nv === null || nv === 9) continue MAIN;
-                new_pos[0] += dr;
-                new_pos[1] += dc;
+                if (nv === null || (prime ? nv > i : nv === 9)) continue MAIN;
+                i++;
+                new_pos = [r + dr * i, c + dc * i];
             }
             errors.add_all(cells);
             continue;
@@ -643,7 +644,7 @@ const vector_check: RuleCheckingFunction<VectorRule> = function (
             continue;
         }
         const nv = board_getter(new_pos);
-        if (nv !== null && nv !== 9) {
+        if (nv !== null && (prime ? nv <= v : nv !== 9)) {
             errors.add(pos);
             errors.add(new_pos);
         }
@@ -1437,6 +1438,17 @@ const box_prime_check: RuleCheckingFunction<BoxPrimeRule> = function (
     return errors.result();
 }
 
+const vector_prime_check: RuleCheckingFunction<VectorPrimeRule> = function (
+    board_getter: BoardGetter, rule: VectorPrimeRule
+): RuleCheckingResult {
+    const vector_rule: VectorRule = {
+        id: "[VT]",
+        render_state: rule.render_state,
+    };
+
+    return vector_check(board_getter, vector_rule, true);
+}
+
 const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1483,6 +1495,7 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[RG']": (state, rule) => range_prime_check(state, rule as RangePrimeRule),
     "[TR']": (state, rule) => trail_prime_check(state, rule as TrailPrimeRule),
     "[SG']": (state, rule) => segment_prime_check(state, rule as SegmentPrimeRule),
+    "[VT']": (state, rule) => vector_prime_check(state, rule as VectorPrimeRule),
 } as const;
 
 export function check_all(

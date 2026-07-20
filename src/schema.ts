@@ -576,6 +576,16 @@ const BoxPrimeRuleSchema = z.object({
 });
 export type BoxPrimeRule = z.infer<typeof BoxPrimeRuleSchema>;
 
+const VectorPrimeRuleSchema = z.object({
+    id: z.literal("[VT']"),
+    render_state: z.object({
+        arrows: z.array(
+            z.tuple([BoardCoordSchema, BoardCoordSchema, z.enum(["L", "R", "U", "D"])])
+        ),
+    }),
+});
+export type VectorPrimeRule = z.infer<typeof VectorPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -631,6 +641,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     BlockRuleSchema,
 
     BoxPrimeRuleSchema,
+    VectorPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

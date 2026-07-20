@@ -17,7 +17,7 @@ import {
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
     is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
     type SequencePrimeRule, type RangePrimeRule, type TrailPrimeRule, type SegmentPrimeRule, type BoxPrimeRule,
-    generate_positions,
+    generate_positions, type VectorPrimeRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -513,7 +513,9 @@ const temperature_render: Renderer<TemperatureRule> = function (ctx: RenderConte
     }
 }
 
-const vector_render: Renderer<VectorRule> = function (ctx: RenderContext, rule: VectorRule) {
+const vector_render: Renderer<VectorRule, [string?]> = function (
+    ctx: RenderContext, rule: VectorRule, color: string = "rgba(255, 0, 106, 0.5)"
+) {
     const d = 0.25;
     const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
         "L": [-d, 0],
@@ -528,7 +530,7 @@ const vector_render: Renderer<VectorRule> = function (ctx: RenderContext, rule: 
             .map(([nx, ny]): [number, number] => [nx + c + 0.5 - 0.2 * x, ny + r + 0.5 - 0.2 * y]);
 
         const poly = generate_polygon(points)
-        poly.setAttribute("fill", "rgba(255, 0, 106, 0.5)");
+        poly.setAttribute("fill", color);
         ctx.layer_bottom.appendChild(poly);
     }
 }
@@ -688,6 +690,15 @@ const segment_prime_render: Renderer<SegmentPrimeRule> = function (ctx: RenderCo
     }
 }
 
+const vector_prime_render: Renderer<VectorPrimeRule> = function (ctx: RenderContext, rule: VectorPrimeRule) {
+    const vector_rule: VectorRule = {
+        id: "[VT]",
+        render_state: rule.render_state,
+    };
+
+    vector_render(ctx, vector_rule, "rgba(85, 51, 255, 0.5)");
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -802,6 +813,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[AQ]": (ctx, r) => aquarium_render(ctx, r as AquariumRule),
     "[MT]": (ctx, r) => meta_render(ctx, r as MetaRule),
+    "[B']": (ctx, r) => box_prime_render(ctx, r as BoxPrimeRule),
     "[LK']": (ctx, r) => link_prime_render(ctx, r as LinkPrimeRule),
     "[PR']": (ctx, r) => prism_prime_render(ctx, r as PrismPrimeRule),
     "[LO']": (ctx, r) => lotus_prime_render(ctx, r as LotusPrimeRule),
@@ -810,7 +822,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[RG']": (ctx, r) => range_prime_render(ctx, r as RangePrimeRule),
     "[TR']": (ctx, r) => trail_prime_render(ctx, r as TrailPrimeRule),
     "[SG']": (ctx, r) => segment_prime_render(ctx, r as SegmentPrimeRule),
-    "[B']": (ctx, r) => box_prime_render(ctx, r as BoxPrimeRule),
+    "[VT']": (ctx, r) => vector_prime_render(ctx, r as VectorPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 
@@ -818,7 +830,7 @@ const render_order: Array<RuleID> = [
     "[RT]", "[RT']",  // bottom - background
     "[TM]", "[AQ]", "[PA]", "[SG']",  // bottom - cage
     "[LO]", "[LO']", "[TR]", "[TR']", "[EF]",  // bottom - circle
-    "[VT]", "[MT]",  // bottom - shape
+    "[VT]", "[VT']", "[MT]",  // bottom - shape
     "[SR]", "[RF]", "[IV]", "[MR]",  // bottom - line
 
     "[Sudoku]", "[R]", "[R']", "[C]", "[B]", "[B']", "[SG]",  // middle
