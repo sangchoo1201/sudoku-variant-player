@@ -11,7 +11,7 @@ import {
     type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule, type RangePrimeRule,
     type TrailPrimeRule, type SegmentPrimeRule,
     board_coords, digits,
-    is_coord, is_pos, is_digit, generate_positions,
+    is_coord, is_pos, is_digit, generate_positions, type BoxPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -1377,6 +1377,52 @@ const block_check: PureCheckingFunction = function (board_getter: BoardGetter): 
     return errors.result();
 }
 
+const box_prime_check: RuleCheckingFunction<BoxPrimeRule> = function (
+    board_getter: BoardGetter, rule: BoxPrimeRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [i, [a, b]] of rule.render_state.hints.entries()) {
+        const r = i - i % 3, c = i % 3 * 3;
+        const p1 = [r, c] as Position, p2 = [r + 2, c + 2] as Position;
+
+        const color = {'min': 0, 'max': 0}, uncolor = {'min': 0, 'max': 0};
+        for (const [nr, nc] of generate_positions(p1, p2)) {
+            const nv = board_getter([nr, nc]);
+            const target = ((nr + nc) % 2 === 0 ? color : uncolor);
+            target.min += nv ?? 1;
+            target.max += nv ?? 9;
+        }
+
+        const color_a = color.min <= a && a <= color.max;
+        const color_b = color.min <= b && b <= color.max;
+        const uncolor_a = uncolor.min <= a && a <= uncolor.max;
+        const uncolor_b = uncolor.min <= b && b <= uncolor.max;
+        const data = [color_a, uncolor_a, color_b, uncolor_b];
+
+        if (color_a && uncolor_b || color_b && uncolor_a) continue;
+
+        let possible: number;
+        if (data.every(x => x === false)) {
+            possible = -1;
+        } else if (data.filter(x => x === false).length === 3) {
+            possible = data.findIndex(x => x === true) % 2;
+        } else if (color_a && color_b) {
+            possible = 0;
+        } else if (uncolor_a && uncolor_b) {
+            possible = 1;
+        } else {
+            possible = -1;
+        }
+
+        for (const [nr, nc] of generate_positions(p1, p2)) {
+            if ((nr + nc) % 2 !== possible) errors.add([nr, nc]);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1414,6 +1460,7 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[EF]": (state, rule) => reflex_check(state, rule as ReflexRule),
     "[AQ]": (state, rule) => aquarium_check(state, rule as AquariumRule),
     "[MT]": (state, rule) => meta_check(state, rule as MetaRule),
+    "[B']": (state, rule) => box_prime_check(state, rule as BoxPrimeRule),
     "[LK']": (state, rule) => link_prime_check(state, rule as LinkPrimeRule),
     "[PR']": (state, rule) => prism_prime_check(state, rule as PrismPrimeRule),
     "[LO']": (state, rule) => lotus_prime_check(state, rule as LotusPrimeRule),

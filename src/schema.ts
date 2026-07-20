@@ -422,7 +422,7 @@ const ProductRuleSchema = z.object({
             z.tuple([
                 DirectionExtendedSchema,
                 BoardCoordSchema,
-                z.number()
+                z.int(),
             ])
         ),
     }),
@@ -568,6 +568,14 @@ const BlockRuleSchema = z.object({
     id: z.literal("[BL]"),
 });
 
+const BoxPrimeRuleSchema = z.object({
+    id: z.literal("[B']"),
+    render_state: z.object({
+        hints: z.array(z.tuple([z.int(), z.int()])).length(9),
+    }),
+});
+export type BoxPrimeRule = z.infer<typeof BoxPrimeRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -621,6 +629,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     SegmentPrimeRuleSchema,
     RowPrimeRuleSchema,
     BlockRuleSchema,
+
+    BoxPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

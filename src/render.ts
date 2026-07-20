@@ -16,7 +16,8 @@ import {
     type PointRule, type VectorRule, type StreamRule, type PairRule, type InversionRule, type Position, type Direction,
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
     is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
-    type SequencePrimeRule, type RangePrimeRule, type TrailPrimeRule, type SegmentPrimeRule,
+    type SequencePrimeRule, type RangePrimeRule, type TrailPrimeRule, type SegmentPrimeRule, type BoxPrimeRule,
+    generate_positions,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -195,27 +196,20 @@ const sudoku_render: PureRenderer = function (ctx: RenderContext) {
     }
 }
 
-const row_render: PureRenderer = function (ctx: RenderContext) {
+function draw_row(ctx: RenderContext, color: string) {
     const d = 0.035;
     for (let i = 0; i <= 9; i++) {
         const line = generate_line([-d / 2, i], [9 + d / 2, i]);
-        line.setAttribute("stroke", "#777");
+        line.setAttribute("stroke", color);
         line.setAttribute("stroke-width", d.toString());
 
         ctx.layer_middle.appendChild(line);
     }
 }
 
-const row_prime_render: PureRenderer = function (ctx: RenderContext) {
-    const d = 0.035;
-    for (let i = 0; i <= 9; i++) {
-        const line = generate_line([-d / 2, i], [9 + d / 2, i]);
-        line.setAttribute("stroke", "rgb(170, 119, 119)");
-        line.setAttribute("stroke-width", d.toString());
+const row_render: PureRenderer = (ctx: RenderContext) => draw_row(ctx, "#777");
 
-        ctx.layer_middle.appendChild(line);
-    }
-}
+const row_prime_render: PureRenderer = (ctx: RenderContext) => draw_row(ctx, "rgb(170, 119, 119)")
 
 const column_render: PureRenderer = function (ctx: RenderContext) {
     const d = 0.035;
@@ -228,17 +222,54 @@ const column_render: PureRenderer = function (ctx: RenderContext) {
     }
 }
 
-const box_render: PureRenderer = function (ctx: RenderContext) {
+function draw_box(ctx: RenderContext, color: string) {
     const d = 0.06;
     for (let i = 0; i < 8; i++) {
         const i3 = (i % 4) * 3;
         const [x1, x2, y1, y2] = i >= 4 ? [-d / 2, 9 + d / 2, i3, i3] : [i3, i3, -d / 2, 9 + d / 2];
 
         const line = generate_line([x1, y1], [x2, y2]);
-        line.setAttribute("stroke", "black");
+        line.setAttribute("stroke", color);
         line.setAttribute("stroke-width", "0.06");
 
         ctx.layer_middle.appendChild(line);
+    }
+}
+
+const box_render: PureRenderer = (ctx: RenderContext) => draw_box(ctx, "#000")
+
+const box_prime_render: Renderer<BoxPrimeRule> = function (ctx: RenderContext, rule: BoxPrimeRule) {
+    draw_box(ctx, "rgb(127, 0, 0)");
+
+    for (const [r, c] of generate_positions()) {
+        if ((r + c) % 2 === 1) continue;
+
+        const rect = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "rect"
+        );
+        rect.setAttribute("x", c.toString());
+        rect.setAttribute("y", r.toString());
+        rect.setAttribute("width", "1");
+        rect.setAttribute("height", "1");
+        rect.setAttribute("stroke", "none");
+        rect.setAttribute("fill", "rgba(234, 255, 128, 0.25)");
+        ctx.layer_bottom.appendChild(rect);
+    }
+
+    for (const [i, [a, b]] of rule.render_state.hints.entries()) {
+        const text = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "text"
+        );
+        text.textContent = `${a} ${b}`;
+        text.setAttribute("x", `${i % 3 * 3 + 0.07}`);
+        text.setAttribute("y", `${i - i % 3 + 0.07}`);
+        text.setAttribute("dominant-baseline", "hanging");
+        text.setAttribute("font-size", "0.2");
+        text.setAttribute("font-weight", "bold");
+        text.setAttribute("fill", "rgba(31, 31, 31, 0.5)");
+        ctx.layer_middle.appendChild(text);
     }
 }
 
@@ -779,6 +810,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[RG']": (ctx, r) => range_prime_render(ctx, r as RangePrimeRule),
     "[TR']": (ctx, r) => trail_prime_render(ctx, r as TrailPrimeRule),
     "[SG']": (ctx, r) => segment_prime_render(ctx, r as SegmentPrimeRule),
+    "[B']": (ctx, r) => box_prime_render(ctx, r as BoxPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 
@@ -789,7 +821,7 @@ const render_order: Array<RuleID> = [
     "[VT]", "[MT]",  // bottom - shape
     "[SR]", "[RF]", "[IV]", "[MR]",  // bottom - line
 
-    "[Sudoku]", "[R]", "[R']", "[C]", "[B]", "[SG]",  // middle
+    "[Sudoku]", "[R]", "[R']", "[C]", "[B]", "[B']", "[SG]",  // middle
 
     "[BD]", "[PR]", "[PR']", "[LK]", "[LK']", "[PO]"  // top
 ] as const;
