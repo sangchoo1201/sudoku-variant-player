@@ -804,12 +804,10 @@ const epsilon_check: RuleCheckingFunction<Rule, [boolean?]> = function (
     const errors = create_error_collector();
 
     const size = prime ? 5 : 3;
+    const set = new Set<Digit | null>(prime ? [5, 6, 7, 8, 9] : [1, 2, 3, 4]);
 
     const visited = new Set<string>();
-    const condition = (pos: Position) => {
-        const v = board_getter(pos);
-        return v === 1 || v === 2 || v === 3 || v === 4;
-    }
+    const condition = (pos: Position) => set.has(board_getter(pos));
     const bfs = generate_bfs(visited, condition);
 
     for (const pos of generate_positions()) {
@@ -1456,6 +1454,10 @@ const vector_prime_check: RuleCheckingFunction<VectorPrimeRule> = function (
     return vector_check(board_getter, vector_rule, true);
 }
 
+const epsilon_prime_check: RuleCheckingFunction<Rule> = function (board_getter: BoardGetter, rule: Rule) {
+    return epsilon_check(board_getter, rule, true);
+}
+
 const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1468,8 +1470,9 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[TP]": triplet_check,
     "[EP]": epsilon_check,
     "[BP]": bumper_check,
-    "[QD']": quad_prime_check,
     "[BL]": block_check,
+    "[QD']": quad_prime_check,
+    "[EP']": epsilon_prime_check,
     "[SG]": (state, rule) => segment_check(state, rule as SegmentRule),
     "[LK]": (state, rule) => link_check(state, rule as LinkRule),
     "[LO]": (state, rule) => lotus_check(state, rule as LotusRule),

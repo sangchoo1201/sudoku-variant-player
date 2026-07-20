@@ -586,6 +586,10 @@ const VectorPrimeRuleSchema = z.object({
 });
 export type VectorPrimeRule = z.infer<typeof VectorPrimeRuleSchema>;
 
+const EpsilonPrimeSchema = z.object({
+    id: z.literal("[EP']"),
+});
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -642,6 +646,7 @@ const RuleSchema = z.discriminatedUnion("id", [
 
     BoxPrimeRuleSchema,
     VectorPrimeRuleSchema,
+    EpsilonPrimeSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
