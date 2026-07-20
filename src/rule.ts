@@ -617,12 +617,26 @@ const vector_check: RuleCheckingFunction<VectorRule> = function (
 ): RuleCheckingResult {
     const errors = create_error_collector();
 
+    MAIN:
     for (const [r, c, direction] of rule.render_state.arrows) {
         const pos: Position = [r, c];
-        const v = board_getter(pos);
-        if (v === null) continue;
-
         const [dr, dc] = direction_map[direction];
+
+        const v = board_getter(pos);
+        if (v === null) {
+            const cells: Position[] = [pos];
+            const new_pos: [number, number] = [r + dr, c + dc];
+            while (is_pos(new_pos)) {
+                cells.push([...new_pos]);
+                const nv = board_getter(new_pos);
+                if (nv === null || nv === 9) continue MAIN;
+                new_pos[0] += dr;
+                new_pos[1] += dc;
+            }
+            errors.add_all(cells);
+            continue;
+        }
+
         const new_pos: [number, number] = [r + dr * v, c + dc * v];
         if (!is_pos(new_pos)) {
             errors.add(pos);
@@ -723,13 +737,13 @@ const escape_check: PureCheckingFunction = function (board_getter: BoardGetter):
     }
     const bfs = generate_bfs(visited, condition);
 
-    loop:
+    LOOP:
     for (const pos of generate_positions()) {
         if (visited.has(encode(pos)) || !condition(pos)) continue;
 
         const region = bfs(pos);
         for (const [nr, _] of region) {
-            if (nr === 0 || nr === 8) continue loop;
+            if (nr === 0 || nr === 8) continue LOOP;
         }
 
         errors.add_all(region);
@@ -950,7 +964,7 @@ const reflex_check: RuleCheckingFunction<ReflexRule> = function (
 
     const set = new Set<string>(rule.render_state.marked_cells.map(encode));
 
-    next:
+    NEXT:
     for (const pos of rule.render_state.marked_cells) {
         const v = board_getter(pos);
 
@@ -971,7 +985,7 @@ const reflex_check: RuleCheckingFunction<ReflexRule> = function (
         const prefix = counts.map(x => sum += x);
         for (const i of digits) {
             if (v !== null && v !== i) continue;
-            if (prefix[i] <= (i - 1) && (i - 1) <= prefix[i] + null_count) continue next;
+            if (prefix[i] <= (i - 1) && (i - 1) <= prefix[i] + null_count) continue NEXT;
         }
 
         errors.add(pos);
@@ -1091,13 +1105,13 @@ const prism_prime_check: RuleCheckingFunction<PrismPrimeRule> = function (
         const v1 = board_getter(p1), v2 = board_getter(p2), v3 = board_getter(p3);
         let exist = false;
 
-        check:
+        CHECK:
         for (const a of (v1 === null ? digits : [v1])) {
             for (const b of (v2 === null ? digits : [v2])) {
                 for (const c of (v3 === null ? digits : [v3])) {
                     if (set.has(a * 100 + b * 10 + c)) {
                         exist = true;
-                        break check;
+                        break CHECK;
                     }
                 }
             }
@@ -1147,13 +1161,13 @@ const quad_prime_check: PureCheckingFunction = function (board_getter: BoardGett
 
     const quad_adjacent = [[0, 0], [0, 1], [1, 0], [1, 1]] as const;
 
-    next:
+    NEXT:
     for (const pos of generate_positions([0, 0], [7, 7])) {
         const quad = get_neighbors(quad_adjacent, pos);
         let sum = 0;
         for (const new_pos of quad) {
             const nv = board_getter(new_pos);
-            if (nv === null) continue next;
+            if (nv === null) continue NEXT;
             sum += nv;
         }
         if (sum % 3 === 0) {
@@ -1213,7 +1227,7 @@ const range_prime_check: RuleCheckingFunction<RangePrimeRule> = function (
     type letters = typeof letters[number];
     const ranges = generate_record<letters, number | null>(letters, () => null);
 
-    next:
+    NEXT:
     for (const [direction, index, letter] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
         const one_pos: BoardCoord[] = [], nine_pos: BoardCoord[] = [];
@@ -1241,7 +1255,7 @@ const range_prime_check: RuleCheckingFunction<RangePrimeRule> = function (
                     errors.add_direction(direction, index);
                     errors.add_all(one_pos.map(get_pos));
                     errors.add_all(nine_pos.map(get_pos));
-                    continue next;
+                    continue NEXT;
                 }
             }
         }
