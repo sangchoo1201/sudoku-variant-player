@@ -27,7 +27,7 @@ type RenderContext = {
 }
 
 type PureRenderer = (ctx: RenderContext) => void;
-type Renderer<T extends Rule, A extends unknown[] = []> = (ctx: RenderContext, rule: T, ...args: A) => void;
+type Renderer<T extends Rule> = (ctx: RenderContext, rule: T) => void;
 
 type Coordinate = [number, number];
 
@@ -283,7 +283,7 @@ const segment_render: Renderer<SegmentRule> = function (ctx: RenderContext, rule
     }
 }
 
-const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: LinkRule) {
+const link_render: Renderer<LinkRule | LinkPrimeRule> = function (ctx: RenderContext, rule: LinkRule | LinkPrimeRule) {
     const d = 0.13;
     for (const [[r1, c1], [r2, c2]] of rule.render_state.edges) {
         const cx = (c1 + c2 + 1) / 2, cy = (r1 + r2 + 1) / 2;
@@ -297,9 +297,10 @@ const link_render: Renderer<LinkRule> = function (ctx: RenderContext, rule: Link
     }
 }
 
-const lotus_render: Renderer<LotusRule, [string?]> = function (
-    ctx: RenderContext, rule: LotusRule, color: string = "rgb(189, 235, 107)",
+const lotus_render: Renderer<LotusRule | LotusPrimeRule> = function (
+    ctx: RenderContext, rule: LotusRule | LotusPrimeRule
 ) {
+    const color = rule.id === "[LO]" ? "rgb(189, 235, 107)" : "rgb(40, 200, 222)";
     for (const [r, c] of rule.render_state.cells) {
         const circle = generate_circle(pos_to_coord([r, c]));
 
@@ -459,7 +460,7 @@ const reference_render: Renderer<ReferenceRule> = function (ctx: RenderContext, 
     }
 }
 
-const root_render: Renderer<RootRule> = function (ctx: RenderContext, rule: RootRule) {
+const root_render: Renderer<RootRule | RootPrimeRule> = function (ctx: RenderContext, rule: RootRule | RootPrimeRule) {
     for (const [r, c, dist] of rule.render_state.cells) {
         const text = document.createElementNS(
             "http://www.w3.org/2000/svg",
@@ -513,9 +514,11 @@ const temperature_render: Renderer<TemperatureRule> = function (ctx: RenderConte
     }
 }
 
-const vector_render: Renderer<VectorRule, [string?]> = function (
-    ctx: RenderContext, rule: VectorRule, color: string = "rgba(255, 0, 106, 0.5)"
+const vector_render: Renderer<VectorRule | VectorPrimeRule> = function (
+    ctx: RenderContext, rule: VectorRule | VectorPrimeRule
 ) {
+    const color = rule.id === "[VT]" ? "rgba(255, 0, 106, 0.5)" : "rgba(85, 51, 255, 0.5)";
+
     const d = 0.25;
     const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
         "L": [-d, 0],
@@ -547,7 +550,7 @@ const pair_render: Renderer<PairRule> = function (ctx: RenderContext, rule: Pair
     }
 }
 
-const trail_render: Renderer<TrailRule> = function (ctx: RenderContext, rule: TrailRule) {
+const trail_render: Renderer<TrailRule | TrailPrimeRule> = function (ctx: RenderContext, rule: TrailRule | TrailPrimeRule) {
     for (const [pos, color] of [
         [rule.render_state.start, "rgb(0, 127, 255)"],
         [rule.render_state.end, "rgb(255, 127, 0)"]
@@ -626,15 +629,6 @@ const meta_render: Renderer<MetaRule> = function (ctx: RenderContext, rule: Meta
     }
 }
 
-const link_prime_render: Renderer<LinkPrimeRule> = function (ctx: RenderContext, rule: LinkPrimeRule) {
-    const link_rule: LinkRule = {
-        id: "[LK]",
-        render_state: rule.render_state,
-    }
-
-    link_render(ctx, link_rule);
-}
-
 const prism_prime_render: Renderer<PrismPrimeRule> = function (ctx: RenderContext, rule: PrismPrimeRule) {
     const prism_rule: PrismRule = {
         id: "[PR]",
@@ -649,33 +643,6 @@ const prism_prime_render: Renderer<PrismPrimeRule> = function (ctx: RenderContex
     prism_render(ctx, prism_rule);
 }
 
-const lotus_prime_render: Renderer<LotusPrimeRule> = function (ctx: RenderContext, rule: LotusPrimeRule) {
-    const lotus_rule: LotusRule = {
-        id: "[LO]",
-        render_state: rule.render_state,
-    };
-
-    lotus_render(ctx, lotus_rule, "rgb(40,200,222)");
-}
-
-const root_prime_render: Renderer<RootPrimeRule> = function (ctx: RenderContext, rule: RootPrimeRule) {
-    const root_rule: RootRule = {
-        id: "[RT]",
-        render_state: rule.render_state,
-    };
-
-    root_render(ctx, root_rule);
-}
-
-const trail_prime_render: Renderer<TrailPrimeRule> = function (ctx: RenderContext, rule: TrailPrimeRule) {
-    const trail_rule: TrailRule = {
-        id: "[TR]",
-        render_state: rule.render_state,
-    };
-
-    trail_render(ctx, trail_rule);
-}
-
 const segment_prime_render: Renderer<SegmentPrimeRule> = function (ctx: RenderContext, rule: SegmentPrimeRule) {
     const length = rule.render_state.regions.length;
     for (const [i, region] of rule.render_state.regions.entries()) {
@@ -688,15 +655,6 @@ const segment_prime_render: Renderer<SegmentPrimeRule> = function (ctx: RenderCo
         path.setAttribute("stroke-width", "0.05");
         ctx.layer_bottom.appendChild(path);
     }
-}
-
-const vector_prime_render: Renderer<VectorPrimeRule> = function (ctx: RenderContext, rule: VectorPrimeRule) {
-    const vector_rule: VectorRule = {
-        id: "[VT]",
-        render_state: rule.render_state,
-    };
-
-    vector_render(ctx, vector_rule, "rgba(85, 51, 255, 0.5)");
 }
 
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
@@ -793,37 +751,37 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[QD']": nothing_render,
     "[EP']": nothing_render,
     "[SG]": (ctx, r) => segment_render(ctx, r as SegmentRule),
-    "[LK]": (ctx, r) => link_render(ctx, r as LinkRule),
-    "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
     "[MR]": (ctx, r) => metro_render(ctx, r as MetroRule),
     "[PR]": (ctx, r) => prism_render(ctx, r as PrismRule),
     "[PO]": (ctx, r) => point_render(ctx, r as PointRule),
     "[RF]": (ctx, r) => reference_render(ctx, r as ReferenceRule),
-    "[RT]": (ctx, r) => root_render(ctx, r as RootRule),
     "[TM]": (ctx, r) => temperature_render(ctx, r as TemperatureRule),
     "[SQ]": (ctx, r) => sequence_render(ctx, r as SequenceRule),
     "[QT]": (ctx, r) => quantum_render(ctx, r as QuantumRule),
     "[RG]": (ctx, r) => range_render(ctx, r as RangeRule),
-    "[VT]": (ctx, r) => vector_render(ctx, r as VectorRule),
     "[SR]": (ctx, r) => stream_render(ctx, r as StreamRule),
     "[PA]": (ctx, r) => pair_render(ctx, r as PairRule),
     "[IV]": (ctx, r) => inversion_render(ctx, r as InversionRule),
-    "[TR]": (ctx, r) => trail_render(ctx, r as TrailRule),
     "[PD]": (ctx, r) => product_render(ctx, r as ProductRule),
     "[BD]": (ctx, r) => bridge_render(ctx, r as BridgeRule),
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[AQ]": (ctx, r) => aquarium_render(ctx, r as AquariumRule),
     "[MT]": (ctx, r) => meta_render(ctx, r as MetaRule),
     "[B']": (ctx, r) => box_prime_render(ctx, r as BoxPrimeRule),
-    "[LK']": (ctx, r) => link_prime_render(ctx, r as LinkPrimeRule),
     "[PR']": (ctx, r) => prism_prime_render(ctx, r as PrismPrimeRule),
-    "[LO']": (ctx, r) => lotus_prime_render(ctx, r as LotusPrimeRule),
-    "[RT']": (ctx, r) => root_prime_render(ctx, r as RootPrimeRule),
     "[SQ']": (ctx, r) => sequence_prime_render(ctx, r as SequencePrimeRule),
     "[RG']": (ctx, r) => range_prime_render(ctx, r as RangePrimeRule),
-    "[TR']": (ctx, r) => trail_prime_render(ctx, r as TrailPrimeRule),
     "[SG']": (ctx, r) => segment_prime_render(ctx, r as SegmentPrimeRule),
-    "[VT']": (ctx, r) => vector_prime_render(ctx, r as VectorPrimeRule),
+    "[LK]": (ctx, r) => link_render(ctx, r as LinkRule),
+    "[LK']": (ctx, r) => link_render(ctx, r as LinkPrimeRule),
+    "[RT]": (ctx, r) => root_render(ctx, r as RootRule),
+    "[RT']": (ctx, r) => root_render(ctx, r as RootPrimeRule),
+    "[TR]": (ctx, r) => trail_render(ctx, r as TrailRule),
+    "[TR']": (ctx, r) => trail_render(ctx, r as TrailPrimeRule),
+    "[LO]": (ctx, r) => lotus_render(ctx, r as LotusRule),
+    "[LO']": (ctx, r) => lotus_render(ctx, r as LotusPrimeRule),
+    "[VT]": (ctx, r) => vector_render(ctx, r as VectorRule),
+    "[VT']": (ctx, r) => vector_render(ctx, r as VectorPrimeRule),
     "[ST]": nothing_render,  // TODO
 };
 
@@ -836,7 +794,7 @@ const render_order: Array<RuleID> = [
 
     "[Sudoku]", "[R]", "[R']", "[C]", "[B]", "[B']", "[SG]",  // middle
 
-    "[BD]", "[PR]", "[PR']", "[LK]", "[LK']", "[PO]"  // top
+    "[BD]", "[PR]", "[PR']", "[LK]", "[LK']", "[PO]",  // top
 ] as const;
 
 const render_order_key: Partial<Record<RuleID, number>> = Object.fromEntries(render_order.map((value, index) => [value, index]));

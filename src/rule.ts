@@ -1,24 +1,23 @@
 import {
+    board_coords, digits,
+    is_coord, is_pos, is_digit, generate_positions,
     type BoardCoord, type Position, type Digit,
     type Direction, type DirectionExtended, type Side,
-    type SolvingState,
-    type Rule, type RuleID,
+    type SolvingState, type Rule, type RuleID,
     type SegmentRule, type LinkRule, type LotusRule, type MetroRule, type SequenceRule,
     type QuantumRule, type RangeRule, type ReferenceRule, type PrismRule, type TemperatureRule,
     type RootRule, type PointRule, type StencilRule, type VectorRule, type StreamRule,
     type PairRule, type InversionRule, type PositionExtended, type TrailRule, type ProductRule,
     type BridgeRule, type ReflexRule, type AquariumRule, type MetaRule, type LinkPrimeRule,
     type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule, type RangePrimeRule,
-    type TrailPrimeRule, type SegmentPrimeRule,
-    board_coords, digits,
-    is_coord, is_pos, is_digit, generate_positions, type BoxPrimeRule, type VectorPrimeRule,
+    type TrailPrimeRule, type SegmentPrimeRule, type BoxPrimeRule, type VectorPrimeRule, type EpsilonRule,
+    type EpsilonPrimeRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
 type RuleCheckingResult = [true, []] | [false, PositionExtended[]];
 type PureCheckingFunction = (board_getter: BoardGetter) => RuleCheckingResult;
-type RuleCheckingFunction<T extends Rule, A extends unknown[] = []> =
-    (board_getter: BoardGetter, rule: T, ...args: A) => RuleCheckingResult;
+type RuleCheckingFunction<T extends Rule> = (board_getter: BoardGetter, rule: T) => RuleCheckingResult;
 type CoordinateMappingFunction = (i: number, j: number) => Position;
 export type BoardGetter = (p: Position) => Digit | null;
 
@@ -513,33 +512,6 @@ const temperature_check: RuleCheckingFunction<TemperatureRule> = function (
     return errors.result();
 }
 
-const root_check: RuleCheckingFunction<RootRule, [boolean?]> = function (
-    board_getter: BoardGetter, rule: RootRule, prime: boolean = false,
-): RuleCheckingResult {
-    const errors = create_error_collector();
-
-    for (const [r, c, distance] of rule.render_state.cells) {
-        const v = board_getter([r, c]);
-        if (v === null) continue;
-
-        let has_exact = false, has_close = false, has_far = false;
-        for (const [nr, nc] of generate_positions()) {
-            const d = (r - nr) ** 2 + (c - nc) ** 2;
-            if (d === 0) continue;
-            const nv = board_getter([nr, nc]);
-            if (d > distance && nv === v) has_far = true;
-            if (d === distance && (nv === null || nv === v)) has_exact = true;
-            if (d < distance && nv === v) has_close = true;
-        }
-
-        if (!has_exact || (prime ? has_far : has_close)) {
-            errors.add([r, c]);
-        }
-    }
-
-    return errors.result();
-}
-
 const point_check: RuleCheckingFunction<PointRule> = function (
     board_getter: BoardGetter, rule: PointRule
 ): RuleCheckingResult {
@@ -601,54 +573,6 @@ const stencil_check: RuleCheckingFunction<StencilRule> = function (
         for (let i = 0; i < 8; i++) {
             const new_positions = positions.map(transforms[i % 4]);
             errors.add_all(match_piece(board_getter, new_positions.map(transpose(i >= 4))));
-        }
-    }
-
-    return errors.result();
-}
-
-const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
-    "L": [0, -1],
-    "R": [0, 1],
-    "U": [-1, 0],
-    "D": [1, 0],
-};
-
-const vector_check: RuleCheckingFunction<VectorRule, [boolean?]> = function (
-    board_getter: BoardGetter, rule: VectorRule, prime: boolean = false
-): RuleCheckingResult {
-    const errors = create_error_collector();
-
-    MAIN:
-    for (const [r, c, direction] of rule.render_state.arrows) {
-        const pos: Position = [r, c];
-        const [dr, dc] = direction_map[direction];
-
-        const v = board_getter(pos);
-        if (v === null) {
-            const cells: Position[] = [pos];
-            let i = 1;
-            let new_pos: [number, number] = [r + dr, c + dc];
-            while (is_pos(new_pos)) {
-                cells.push(new_pos);
-                const nv = board_getter(new_pos);
-                if (nv === null || (prime ? nv > i : nv === 9)) continue MAIN;
-                i++;
-                new_pos = [r + dr * i, c + dc * i];
-            }
-            errors.add_all(cells);
-            continue;
-        }
-
-        const new_pos: [number, number] = [r + dr * v, c + dc * v];
-        if (!is_pos(new_pos)) {
-            errors.add(pos);
-            continue;
-        }
-        const nv = board_getter(new_pos);
-        if (nv !== null && (prime ? nv <= v : nv !== 9)) {
-            errors.add(pos);
-            errors.add(new_pos);
         }
     }
 
@@ -792,35 +716,6 @@ const triplet_check: PureCheckingFunction = function (board_getter: BoardGetter)
                 errors.add(p2);
                 errors.add(p3);
             }
-        }
-    }
-
-    return errors.result();
-}
-
-const epsilon_check: RuleCheckingFunction<Rule, [boolean?]> = function (
-    board_getter: BoardGetter, _, prime: boolean = false
-): RuleCheckingResult {
-    const errors = create_error_collector();
-
-    const size = prime ? 5 : 3;
-    const set = new Set<Digit | null>(prime ? [5, 6, 7, 8, 9] : [1, 2, 3, 4]);
-
-    const visited = new Set<string>();
-    const condition = (pos: Position) => set.has(board_getter(pos));
-    const bfs = generate_bfs(visited, condition);
-
-    for (const pos of generate_positions()) {
-        const v = board_getter(pos);
-        if (v === null || visited.has(encode(pos)) || !condition(pos)) continue;
-        const region = bfs(pos);
-        if (region.length === size) continue;
-        if (region.length > size) {
-            errors.add_all(region);
-            continue;
-        }
-        if (region.every(pos => get_neighbors(adjacent, pos).every(new_pos => board_getter(new_pos) !== null))) {
-            errors.add_all(region);
         }
     }
 
@@ -1184,17 +1079,6 @@ const quad_prime_check: PureCheckingFunction = function (board_getter: BoardGett
     return errors.result();
 }
 
-const root_prime_check: RuleCheckingFunction<RootPrimeRule> = function (
-    board_getter: BoardGetter, rule: RootPrimeRule,
-): RuleCheckingResult {
-    const root_rule: RootRule = {
-        id: "[RT]",
-        render_state: rule.render_state,
-    };
-
-    return root_check(board_getter, root_rule, true);
-}
-
 const sequence_prime_check: RuleCheckingFunction<SequencePrimeRule> = function (
     board_getter: BoardGetter, rule: SequencePrimeRule
 ): RuleCheckingResult {
@@ -1443,19 +1327,108 @@ const box_prime_check: RuleCheckingFunction<BoxPrimeRule> = function (
     return errors.result();
 }
 
-const vector_prime_check: RuleCheckingFunction<VectorPrimeRule> = function (
-    board_getter: BoardGetter, rule: VectorPrimeRule
+const epsilon_check: RuleCheckingFunction<EpsilonRule | EpsilonPrimeRule> = function (
+    board_getter: BoardGetter, rule: EpsilonRule | EpsilonPrimeRule
 ): RuleCheckingResult {
-    const vector_rule: VectorRule = {
-        id: "[VT]",
-        render_state: rule.render_state,
-    };
+    const errors = create_error_collector();
 
-    return vector_check(board_getter, vector_rule, true);
+    const size = rule.id === '[EP]' ? 3 : 5;
+    const set = new Set<Digit | null>(rule.id === '[EP]' ? [1, 2, 3, 4] : [5, 6, 7, 8, 9]);
+
+    const visited = new Set<string>();
+    const condition = (pos: Position) => set.has(board_getter(pos));
+    const bfs = generate_bfs(visited, condition);
+
+    for (const pos of generate_positions()) {
+        const v = board_getter(pos);
+        if (v === null || visited.has(encode(pos)) || !condition(pos)) continue;
+        const region = bfs(pos);
+        if (region.length === size) continue;
+        if (region.length > size) {
+            errors.add_all(region);
+            continue;
+        }
+        if (region.every(pos => get_neighbors(adjacent, pos).every(new_pos => board_getter(new_pos) !== null))) {
+            errors.add_all(region);
+        }
+    }
+
+    return errors.result();
 }
 
-const epsilon_prime_check: RuleCheckingFunction<Rule> = function (board_getter: BoardGetter, rule: Rule) {
-    return epsilon_check(board_getter, rule, true);
+const root_check: RuleCheckingFunction<RootRule | RootPrimeRule> = function (
+    board_getter: BoardGetter, rule: RootRule | RootPrimeRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    for (const [r, c, distance] of rule.render_state.cells) {
+        const v = board_getter([r, c]);
+        if (v === null) continue;
+
+        let has_exact = false, has_close = false, has_far = false;
+        for (const [nr, nc] of generate_positions()) {
+            const d = (r - nr) ** 2 + (c - nc) ** 2;
+            if (d === 0) continue;
+            const nv = board_getter([nr, nc]);
+            if (d > distance && nv === v) has_far = true;
+            if (d === distance && (nv === null || nv === v)) has_exact = true;
+            if (d < distance && nv === v) has_close = true;
+        }
+
+        if (!has_exact || (rule.id === '[RT]' ? has_close : has_far)) {
+            errors.add([r, c]);
+        }
+    }
+
+    return errors.result();
+}
+
+const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
+    "L": [0, -1],
+    "R": [0, 1],
+    "U": [-1, 0],
+    "D": [1, 0],
+};
+
+const vector_check: RuleCheckingFunction<VectorRule | VectorPrimeRule> = function (
+    board_getter: BoardGetter, rule: VectorRule | VectorPrimeRule
+): RuleCheckingResult {
+    const errors = create_error_collector();
+
+    MAIN:
+        for (const [r, c, direction] of rule.render_state.arrows) {
+            const pos: Position = [r, c];
+            const [dr, dc] = direction_map[direction];
+
+            const v = board_getter(pos);
+            if (v === null) {
+                const cells: Position[] = [pos];
+                let i = 1;
+                let new_pos: [number, number] = [r + dr, c + dc];
+                while (is_pos(new_pos)) {
+                    cells.push(new_pos);
+                    const nv = board_getter(new_pos);
+                    if (nv === null || (rule.id === "[VT]" ? nv === 9 : nv > i)) continue MAIN;
+                    i++;
+                    new_pos = [r + dr * i, c + dc * i];
+                }
+                errors.add_all(cells);
+                continue;
+            }
+
+            const new_pos: [number, number] = [r + dr * v, c + dc * v];
+            if (!is_pos(new_pos)) {
+                errors.add(pos);
+                continue;
+            }
+            const nv = board_getter(new_pos);
+            if (nv !== null && (rule.id === '[VT]' ? nv !== 9 : nv <= v)) {
+                errors.add(pos);
+                errors.add(new_pos);
+            }
+        }
+
+    return errors.result();
 }
 
 const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => RuleCheckingResult> = {
@@ -1468,11 +1441,9 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[QD]": quad_check,
     "[ES]": escape_check,
     "[TP]": triplet_check,
-    "[EP]": epsilon_check,
     "[BP]": bumper_check,
     "[BL]": block_check,
     "[QD']": quad_prime_check,
-    "[EP']": epsilon_prime_check,
     "[SG]": (state, rule) => segment_check(state, rule as SegmentRule),
     "[LK]": (state, rule) => link_check(state, rule as LinkRule),
     "[LO]": (state, rule) => lotus_check(state, rule as LotusRule),
@@ -1483,10 +1454,8 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[RG]": (state, rule) => range_check(state, rule as RangeRule),
     "[SQ]": (state, rule) => sequence_check(state, rule as SequenceRule),
     "[TM]": (state, rule) => temperature_check(state, rule as TemperatureRule),
-    "[RT]": (state, rule) => root_check(state, rule as RootRule),
     "[PO]": (state, rule) => point_check(state, rule as PointRule),
     "[ST]": (state, rule) => stencil_check(state, rule as StencilRule),
-    "[VT]": (state, rule) => vector_check(state, rule as VectorRule),
     "[SR]": (state, rule) => stream_check(state, rule as StreamRule),
     "[PA]": (state, rule) => pair_check(state, rule as PairRule),
     "[IV]": (state, rule) => inversion_check(state, rule as InversionRule),
@@ -1500,12 +1469,16 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[LK']": (state, rule) => link_prime_check(state, rule as LinkPrimeRule),
     "[PR']": (state, rule) => prism_prime_check(state, rule as PrismPrimeRule),
     "[LO']": (state, rule) => lotus_prime_check(state, rule as LotusPrimeRule),
-    "[RT']": (state, rule) => root_prime_check(state, rule as RootPrimeRule),
     "[SQ']": (state, rule) => sequence_prime_check(state, rule as SequencePrimeRule),
     "[RG']": (state, rule) => range_prime_check(state, rule as RangePrimeRule),
     "[TR']": (state, rule) => trail_prime_check(state, rule as TrailPrimeRule),
     "[SG']": (state, rule) => segment_prime_check(state, rule as SegmentPrimeRule),
-    "[VT']": (state, rule) => vector_prime_check(state, rule as VectorPrimeRule),
+    "[EP]": (state, rule) => epsilon_check(state, rule as EpsilonRule),
+    "[EP']": (state, rule) => epsilon_check(state, rule as EpsilonPrimeRule),
+    "[VT]": (state, rule) => vector_check(state, rule as VectorRule),
+    "[VT']": (state, rule) => vector_check(state, rule as VectorPrimeRule),
+    "[RT]": (state, rule) => root_check(state, rule as RootRule),
+    "[RT']": (state, rule) => root_check(state, rule as RootPrimeRule),
 } as const;
 
 export function check_all(

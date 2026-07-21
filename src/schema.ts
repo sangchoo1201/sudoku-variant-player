@@ -414,6 +414,7 @@ const TripletRuleSchema = z.object({
 const EpsilonRuleSchema = z.object({
     id: z.literal("[EP]"),
 });
+export type EpsilonRule = z.infer<typeof EpsilonRuleSchema>;
 
 const ProductRuleSchema = z.object({
     id: z.literal("[PD]"),
@@ -586,9 +587,10 @@ const VectorPrimeRuleSchema = z.object({
 });
 export type VectorPrimeRule = z.infer<typeof VectorPrimeRuleSchema>;
 
-const EpsilonPrimeSchema = z.object({
+const EpsilonPrimeRuleSchema = z.object({
     id: z.literal("[EP']"),
 });
+export type EpsilonPrimeRule = z.infer<typeof EpsilonPrimeRuleSchema>;
 
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
@@ -646,7 +648,7 @@ const RuleSchema = z.discriminatedUnion("id", [
 
     BoxPrimeRuleSchema,
     VectorPrimeRuleSchema,
-    EpsilonPrimeSchema,
+    EpsilonPrimeRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
