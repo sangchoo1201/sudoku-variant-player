@@ -952,7 +952,7 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
 
     for (const start of rule.render_state.start_rows) {
         const pos: Position = [start, 0];
-        const result = dfs([pos], (board_getter(pos) % 9 + 1 as Digit), new Set<number>());
+        const result = dfs([pos], board_getter(pos), new Set<number>());
         if (result === null) {
             rule.render_state.start_rows.forEach(r => errors.add([r, 0]));
             return errors.result();
