@@ -742,7 +742,7 @@ const escape_check: PureCheckingFunction = function (board_getter: BoardGetter):
 
     LOOP:
     for (const pos of generate_positions()) {
-        if (visited.has(encode(pos)) || !condition(pos)) continue;
+        if (board_getter(pos) === null || visited.has(encode(pos)) || !condition(pos)) continue;
 
         const region = bfs(pos);
         for (const [nr, _] of region) {
