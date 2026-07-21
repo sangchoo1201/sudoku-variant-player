@@ -17,7 +17,7 @@ import {
     type TrailRule, type DirectionExtended, type ProductRule, type BridgeRule, type ReflexRule, type AquariumRule,
     is_pos, type MetaRule, type PrismPrimeRule, type LinkPrimeRule, type LotusPrimeRule, type RootPrimeRule,
     type SequencePrimeRule, type RangePrimeRule, type TrailPrimeRule, type SegmentPrimeRule, type BoxPrimeRule,
-    generate_positions, type VectorPrimeRule,
+    generate_positions, type VectorPrimeRule, type LiarRule,
 } from "./schema.ts";
 
 type RenderContext = {
@@ -181,6 +181,19 @@ function generate_cage(region: Position[], inset: number = 0): SVGPathElement {
     return path_element;
 }
 
+function generate_text(content: string, [x, y]: Coordinate): SVGTextElement {
+    const text = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "text"
+    );
+    text.textContent = content;
+    text.style.userSelect = "none";
+    text.style.pointerEvents = "none";
+    text.setAttribute("x", x.toString());
+    text.setAttribute("y", y.toString());
+    return text;
+}
+
 const nothing_render = () => {};
 
 const sudoku_render: PureRenderer = function (ctx: RenderContext) {
@@ -258,13 +271,7 @@ const box_prime_render: Renderer<BoxPrimeRule> = function (ctx: RenderContext, r
     }
 
     for (const [i, [a, b]] of rule.render_state.hints.entries()) {
-        const text = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "text"
-        );
-        text.textContent = `${a} ${b}`;
-        text.setAttribute("x", `${i % 3 * 3 + 0.07}`);
-        text.setAttribute("y", `${i - i % 3 + 0.07}`);
+        const text = generate_text(`${a} ${b}`, [i % 3 * 3 + 0.07, i - i % 3 + 0.07])
         text.setAttribute("dominant-baseline", "hanging");
         text.setAttribute("font-size", "0.2");
         text.setAttribute("font-weight", "bold");
@@ -462,13 +469,6 @@ const reference_render: Renderer<ReferenceRule> = function (ctx: RenderContext, 
 
 const root_render: Renderer<RootRule | RootPrimeRule> = function (ctx: RenderContext, rule: RootRule | RootPrimeRule) {
     for (const [r, c, dist] of rule.render_state.cells) {
-        const text = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "text"
-        );
-
-        text.setAttribute("x", `${c + 0.5}`);
-        text.setAttribute("y", `${r + 0.55}`);
         let mx = 0;
         for (let i = 1; i ** 2 <= dist; i++) {
             if (dist % i ** 2 === 0) mx = i;
@@ -477,7 +477,9 @@ const root_render: Renderer<RootRule | RootPrimeRule> = function (ctx: RenderCon
         if (mx !== 1) txt += mx;
         if (mx ** 2 !== dist) txt += `√${Math.floor(dist / mx ** 2)}`;
         if (dist === 1) txt = '1';
-        text.textContent = txt;
+
+        const [x, y] = pos_to_coord([r, c]);
+        const text = generate_text(txt, [x, y + 0.05]);
 
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("dominant-baseline", "middle");
@@ -485,9 +487,6 @@ const root_render: Renderer<RootRule | RootPrimeRule> = function (ctx: RenderCon
         text.setAttribute("font-weight", "bold")
         text.setAttribute("font-family", "Cambria Math, serif");
         text.setAttribute("fill", "rgba(127, 127, 127, 0.5)");
-        text.style.userSelect = "none";
-        text.style.pointerEvents = "none";
-
         ctx.layer_bottom.appendChild(text);
     }
 }
@@ -657,6 +656,27 @@ const segment_prime_render: Renderer<SegmentPrimeRule> = function (ctx: RenderCo
     }
 }
 
+const liar_render: Renderer<LiarRule> = function (ctx: RenderContext, rule: LiarRule) {
+    for (const [r, c, v] of rule.render_state.cells) {
+        const [x, y] = pos_to_coord([r, c]);
+        const text = generate_text(v.toString(), [x, y + 0.05]);
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("dominant-baseline", "middle");
+        text.setAttribute("font-size", "0.55");
+        text.setAttribute("font-weight", "bold")
+        text.setAttribute("fill", "rgba(127, 127, 127, 0.4)");
+        ctx.layer_bottom.appendChild(text);
+
+        const d = 0.3;
+        const points: Coordinate[] = [[x - d, y - d], [x - d, y + d], [x + d, y + d], [x + d, y - d]];
+        const poly = generate_polygon(points);
+        poly.setAttribute("fill", "none");
+        poly.setAttribute("stroke", "rgba(127, 127, 127, 0.4)");
+        poly.setAttribute("stroke-width", "0.04");
+        ctx.layer_bottom.appendChild(poly);
+    }
+}
+
 function generate_get_pos(direction: DirectionExtended, index: number): (n: number, b?: number) => [number, number] {
     switch (direction) {
         case "ROW_LEFT":
@@ -688,30 +708,20 @@ function side_render(ctx: RenderContext, rule: SideRule, color: string) {
         }
 
         for (const [i, value] of arr.entries()) {
-            const text = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                "text"
-            );
-
             const t = value.toString();
-            let x = 0, y = 0;
+            let coord: Coordinate;
             if (direction === "ROW_LEFT" || direction === "ROW") {
-                [x, y] = get_pos(i + (t.length - 1) / 3);
+                coord = get_pos(i + (t.length - 1) / 3);
             } else {
-                [x, y] = get_pos(i);
+                coord = get_pos(i);
             }
 
-            text.textContent = t;
-            text.setAttribute("x", x.toString());
-            text.setAttribute("y", y.toString());
+            const text = generate_text(t, coord);
             text.setAttribute("text-anchor", "middle");
             text.setAttribute("dominant-baseline", "middle");
             text.setAttribute("font-size", "0.3");
             text.setAttribute("font-weight", "bold")
             text.setAttribute("fill", color);
-            text.style.userSelect = "none";
-            text.style.pointerEvents = "none";
-
             ctx.layer_middle.appendChild(text);
         }
     }
@@ -767,6 +777,7 @@ const renderers: Record<RuleID, (ctx: RenderContext, r: Rule) => void> = {
     "[EF]": (ctx, r) => reflex_render(ctx, r as ReflexRule),
     "[AQ]": (ctx, r) => aquarium_render(ctx, r as AquariumRule),
     "[MT]": (ctx, r) => meta_render(ctx, r as MetaRule),
+    "[LI]": (ctx, r) => liar_render(ctx, r as LiarRule),
     "[B']": (ctx, r) => box_prime_render(ctx, r as BoxPrimeRule),
     "[PR']": (ctx, r) => prism_prime_render(ctx, r as PrismPrimeRule),
     "[SQ']": (ctx, r) => sequence_prime_render(ctx, r as SequencePrimeRule),
@@ -791,6 +802,7 @@ const render_order: Array<RuleID> = [
     "[LO]", "[LO']", "[TR]", "[TR']", "[EF]",  // bottom - circle
     "[VT]", "[VT']", "[MT]",  // bottom - shape
     "[SR]", "[RF]", "[IV]", "[MR]",  // bottom - line
+    "[LI]",  // bottom - text
 
     "[Sudoku]", "[R]", "[R']", "[C]", "[B]", "[B']", "[SG]",  // middle
 

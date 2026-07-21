@@ -592,6 +592,16 @@ const EpsilonPrimeRuleSchema = z.object({
 });
 export type EpsilonPrimeRule = z.infer<typeof EpsilonPrimeRuleSchema>;
 
+const LiarRuleSchema = z.object({
+    id: z.literal("[LI]"),
+    render_state: z.object({
+        cells: z.array(
+            z.tuple([BoardCoordSchema, BoardCoordSchema, DigitSchema])
+        ),
+    }),
+});
+export type LiarRule = z.infer<typeof LiarRuleSchema>;
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -649,6 +659,7 @@ const RuleSchema = z.discriminatedUnion("id", [
     BoxPrimeRuleSchema,
     VectorPrimeRuleSchema,
     EpsilonPrimeRuleSchema,
+    LiarRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;

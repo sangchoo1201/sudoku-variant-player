@@ -11,7 +11,7 @@ import {
     type BridgeRule, type ReflexRule, type AquariumRule, type MetaRule, type LinkPrimeRule,
     type PrismPrimeRule, type LotusPrimeRule, type RootPrimeRule, type SequencePrimeRule, type RangePrimeRule,
     type TrailPrimeRule, type SegmentPrimeRule, type BoxPrimeRule, type VectorPrimeRule, type EpsilonRule,
-    type EpsilonPrimeRule,
+    type EpsilonPrimeRule, type LiarRule,
 } from "./schema.ts";
 import {trail_sat_solve} from "./sat.ts";
 
@@ -30,7 +30,7 @@ const digit_to_coord = (digit: Digit) => digit - 1 as BoardCoord;
 
 const no_error: RuleCheckingResult = [true, []];
 
-function create_error_collector() {
+function ErrorCollector() {
     const errors: PositionExtended[] = [];
     const unique = new Set<string>();
     const encode = ([r, c]: Position) => `${r},${c}`;
@@ -156,7 +156,7 @@ function generate_bfs(
 function generic_duplicate_check(
     board_getter: BoardGetter, map: CoordinateMappingFunction, [a, b]: [number, number] = [9, 9]
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (let i = 0; i < a; i++) {
         let numbers = generate_record<Digit, number[]>(digits, () => []);
@@ -177,7 +177,7 @@ function generic_duplicate_check(
 function generic_pair_check(
     board_getter: BoardGetter, adjacent: readonly (readonly [number, number])[]
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const pos of generate_positions()) {
         const v = board_getter(pos);
@@ -223,7 +223,7 @@ const distant_check: PureCheckingFunction = (board_getter: BoardGetter): RuleChe
 const link_check: RuleCheckingFunction<LinkRule> = function (
     board_getter: BoardGetter, rule: LinkRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [p1, p2] of rule.render_state.edges) {
         const v1 = board_getter(p1), v2 = board_getter(p2);
@@ -240,7 +240,7 @@ const link_check: RuleCheckingFunction<LinkRule> = function (
 const lotus_check: RuleCheckingFunction<LotusRule> = function (
     board_getter: BoardGetter, rule: LotusRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const pos of rule.render_state.cells) {
         const v = board_getter(pos);
@@ -268,7 +268,7 @@ const lotus_check: RuleCheckingFunction<LotusRule> = function (
 const metro_check: RuleCheckingFunction<MetroRule> = function (
     board_getter: BoardGetter, rule: MetroRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const metro of rule.render_state.metros) {
         const nums: number[] = [];
@@ -299,7 +299,7 @@ const metro_check: RuleCheckingFunction<MetroRule> = function (
 const sequence_check: RuleCheckingFunction<SequenceRule> = function (
     board_getter: BoardGetter, rule: SequenceRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [direction, index, sequence] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
@@ -339,7 +339,7 @@ const sequence_check: RuleCheckingFunction<SequenceRule> = function (
 const quantum_check: RuleCheckingFunction<QuantumRule> = function (
     board_getter: BoardGetter, rule: QuantumRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [direction, index, [a, b]] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
@@ -361,7 +361,7 @@ const quantum_check: RuleCheckingFunction<QuantumRule> = function (
 const range_check: RuleCheckingFunction<RangeRule> = function (
     board_getter: BoardGetter, rule: RangeRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [direction, index, [distance]] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos(direction, index);
@@ -409,7 +409,7 @@ const range_check: RuleCheckingFunction<RangeRule> = function (
 const quad_check: PureCheckingFunction = function (
     board_getter: BoardGetter,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
     const quad_adjacent = [[0, 0], [0, 1], [1, 0], [1, 1]] as const;
 
     for (const pos of generate_positions([0, 0], [7, 7])) {
@@ -436,7 +436,7 @@ const quad_check: PureCheckingFunction = function (
 const reference_check: RuleCheckingFunction<ReferenceRule> = function (
     board_getter: BoardGetter, rule: ReferenceRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [direction, index] of rule.render_state.lines) {
         const get_pos = generate_get_pos(direction, index);
@@ -465,7 +465,7 @@ const prime_numbers = new Set([11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 5
 const prism_check: RuleCheckingFunction<PrismRule> = function (
     board_getter: BoardGetter, rule: PrismRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [r1, c1, r2, c2, type] of rule.render_state.edges) {
         const v1 = board_getter([r1, c1]);
@@ -492,7 +492,7 @@ const prism_check: RuleCheckingFunction<PrismRule> = function (
 const temperature_check: RuleCheckingFunction<TemperatureRule> = function (
     board_getter: BoardGetter, rule: TemperatureRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const {cells, color} of rule.render_state.regions) {
         let sum = 0;
@@ -515,7 +515,7 @@ const temperature_check: RuleCheckingFunction<TemperatureRule> = function (
 const point_check: RuleCheckingFunction<PointRule> = function (
     board_getter: BoardGetter, rule: PointRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [p1, p2] of rule.render_state.edges) {
         const v1 = board_getter(p1), v2 = board_getter(p2);
@@ -547,7 +547,7 @@ function match_piece(board_getter: BoardGetter, positions: [Position, Digit][]):
 const stencil_check: RuleCheckingFunction<StencilRule> = function (
     board_getter: BoardGetter, rule: StencilRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const {values} of rule.render_state.pieces) {
         const positions: [Position, Digit][] = [];
@@ -582,7 +582,7 @@ const stencil_check: RuleCheckingFunction<StencilRule> = function (
 const stream_check: RuleCheckingFunction<StreamRule> = function (
     board_getter: BoardGetter, rule: StreamRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const stream of rule.render_state.streams) {
         let remainder: number | null = null;
@@ -605,7 +605,7 @@ const stream_check: RuleCheckingFunction<StreamRule> = function (
 const pair_check: RuleCheckingFunction<PairRule> = function (
     board_getter: BoardGetter, rule: PairRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const pairs: Record<number, [Position, Position]> = {};
     for (const [p1, p2] of rule.render_state.dominoes) {
@@ -627,7 +627,7 @@ const pair_check: RuleCheckingFunction<PairRule> = function (
 const inversion_check: RuleCheckingFunction<InversionRule> = function (
     board_getter: BoardGetter, rule: InversionRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const line of rule.render_state.lines) {
         let min_num = 0;
@@ -655,7 +655,7 @@ const inversion_check: RuleCheckingFunction<InversionRule> = function (
 }
 
 const escape_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const visited = new Set<string>();
     const condition = (pos: Position) => {
@@ -686,7 +686,7 @@ const trail_check: RuleCheckingFunction<TrailRule> = function (
         return no_error;
     }
 
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const result = trail_sat_solve(board_getter);
     if (!result) {
@@ -698,7 +698,7 @@ const trail_check: RuleCheckingFunction<TrailRule> = function (
 }
 
 const triplet_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const p2 of generate_positions([1, 1], [7, 7])) {
         const v2 = board_getter(p2);
@@ -732,7 +732,7 @@ const two_product = new Set([
 const product_check: RuleCheckingFunction<ProductRule> = function (
     board_getter: BoardGetter, rule: ProductRule,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [direction, index, number] of rule.render_state.side_hints) {
         const get_pos = generate_get_pos_extended(direction, index);
@@ -762,7 +762,7 @@ const product_check: RuleCheckingFunction<ProductRule> = function (
 }
 
 const bumper_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const bumper: (boolean | null)[][] = Array.from( {length: 9}, _ => Array(9).fill(null) );
     for (const pos of generate_positions()) {
@@ -817,7 +817,7 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
         return no_error;
     }
 
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const encode = ([r, c]: Position, n: Digit): number => r * 100 + c * 10 + n;
     const min_row: number[] = Array(9).fill(-1);
@@ -861,7 +861,7 @@ const bridge_check: RuleCheckingFunction<BridgeRule> = function (
 const reflex_check: RuleCheckingFunction<ReflexRule> = function (
     board_getter: BoardGetter, rule: ReflexRule,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const set = new Set<string>(rule.render_state.marked_cells.map(encode));
 
@@ -898,7 +898,7 @@ const reflex_check: RuleCheckingFunction<ReflexRule> = function (
 const aquarium_check: RuleCheckingFunction<AquariumRule> = function (
     board_getter: BoardGetter, rule: AquariumRule,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const region of rule.render_state.regions) {
         const set = new Set<string>(region.map(encode));
@@ -924,7 +924,7 @@ const aquarium_check: RuleCheckingFunction<AquariumRule> = function (
 const meta_check: RuleCheckingFunction<MetaRule> = function (
     board_getter: BoardGetter, rule: MetaRule,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const positions = generate_record<Digit, Position[]>(digits, () => []);
     let null_count = 0;
@@ -952,7 +952,7 @@ const meta_check: RuleCheckingFunction<MetaRule> = function (
 const link_prime_check: RuleCheckingFunction<LinkPrimeRule> = function (
     board_getter: BoardGetter, rule: LinkPrimeRule,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const minmax = (a: number, b: number): [number, number] => a < b ? [a, b]: [b, a];
     const encode = ([r1, c1]: Position, [r2, c2]: Position): number => {
@@ -998,7 +998,7 @@ const triple_square_numbers = new Set<number>([
 const prism_prime_check: RuleCheckingFunction<PrismPrimeRule> = function (
     board_getter: BoardGetter, rule: PrismPrimeRule,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [r1, c1, r2, c2, r3, c3, type] of rule.render_state.triplets) {
         const set = type ? triple_prime_numbers : triple_square_numbers;
@@ -1031,7 +1031,7 @@ const prism_prime_check: RuleCheckingFunction<PrismPrimeRule> = function (
 const lotus_prime_check: RuleCheckingFunction<LotusPrimeRule> = function (
     board_getter: BoardGetter, rule: LotusPrimeRule,
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const pos of rule.render_state.cells) {
         const v = board_getter(pos);
@@ -1058,7 +1058,7 @@ const lotus_prime_check: RuleCheckingFunction<LotusPrimeRule> = function (
 }
 
 const quad_prime_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const quad_adjacent = [[0, 0], [0, 1], [1, 0], [1, 1]] as const;
 
@@ -1082,7 +1082,7 @@ const quad_prime_check: PureCheckingFunction = function (board_getter: BoardGett
 const sequence_prime_check: RuleCheckingFunction<SequencePrimeRule> = function (
     board_getter: BoardGetter, rule: SequencePrimeRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const sets: Record<"L" | "M" | "H", Set<Digit>> = {
         L: new Set<Digit>([1, 2, 3]),
@@ -1111,7 +1111,7 @@ const sequence_prime_check: RuleCheckingFunction<SequencePrimeRule> = function (
 const range_prime_check: RuleCheckingFunction<RangePrimeRule> = function (
     board_getter: BoardGetter, rule: RangePrimeRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const letters = ["A", "B", "C", "D", "E", "F", "G", "H"] as const;
     type letters = typeof letters[number];
@@ -1193,7 +1193,7 @@ const trail_prime_check: RuleCheckingFunction<TrailPrimeRule> = function (
 }
 
 const row_prime_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const missing = generate_record<Digit, BoardCoord[]>(digits, () => []);
 
@@ -1245,7 +1245,7 @@ const row_prime_check: PureCheckingFunction = function (board_getter: BoardGette
 }
 
 const block_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const visited = new Set<string>();
     const condition_low = (pos: Position) => {
@@ -1284,7 +1284,7 @@ const block_check: PureCheckingFunction = function (board_getter: BoardGetter): 
 const box_prime_check: RuleCheckingFunction<BoxPrimeRule> = function (
     board_getter: BoardGetter, rule: BoxPrimeRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [i, [a, b]] of rule.render_state.hints.entries()) {
         const r = i - i % 3, c = i % 3 * 3;
@@ -1330,7 +1330,7 @@ const box_prime_check: RuleCheckingFunction<BoxPrimeRule> = function (
 const epsilon_check: RuleCheckingFunction<EpsilonRule | EpsilonPrimeRule> = function (
     board_getter: BoardGetter, rule: EpsilonRule | EpsilonPrimeRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     const size = rule.id === '[EP]' ? 3 : 5;
     const set = new Set<Digit | null>(rule.id === '[EP]' ? [1, 2, 3, 4] : [5, 6, 7, 8, 9]);
@@ -1359,7 +1359,7 @@ const epsilon_check: RuleCheckingFunction<EpsilonRule | EpsilonPrimeRule> = func
 const root_check: RuleCheckingFunction<RootRule | RootPrimeRule> = function (
     board_getter: BoardGetter, rule: RootRule | RootPrimeRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     for (const [r, c, distance] of rule.render_state.cells) {
         const v = board_getter([r, c]);
@@ -1393,7 +1393,7 @@ const direction_map: Record<"L" | "R" | "U" | "D", [number, number]> = {
 const vector_check: RuleCheckingFunction<VectorRule | VectorPrimeRule> = function (
     board_getter: BoardGetter, rule: VectorRule | VectorPrimeRule
 ): RuleCheckingResult {
-    const errors = create_error_collector();
+    const errors = ErrorCollector();
 
     MAIN:
         for (const [r, c, direction] of rule.render_state.arrows) {
@@ -1431,6 +1431,47 @@ const vector_check: RuleCheckingFunction<VectorRule | VectorPrimeRule> = functio
     return errors.result();
 }
 
+const liar_check: RuleCheckingFunction<LiarRule> = function (
+    board_getter: BoardGetter, rule: LiarRule
+): RuleCheckingResult {
+    const errors = ErrorCollector();
+
+    const values: Partial<Record<string, Digit>> = {};
+    for (const [r, c, v] of rule.render_state.cells) {
+        values[encode([r, c])] = v;
+    }
+
+    for (const direction of ["ROW", "COL"] as const) {
+        for (const index of board_coords) {
+            const get_pos = generate_get_pos(direction, index);
+            const truths: Position[] = [];
+            const lies: Position[] = [];
+            let count = 0;
+            for (const i of board_coords) {
+                const pos = get_pos(i);
+                const target = values[encode(pos)];
+                if (target === undefined) continue;
+
+                count++;
+                const v = board_getter(pos);
+                if (v === target) {
+                    truths.push(pos);
+                } else if (v !== null) {
+                    lies.push(pos);
+                }
+            }
+
+            if (lies.length >= 2) {
+                errors.add_all(lies);
+            }
+            if (truths.length === count) {
+                errors.add_all(truths);
+            }
+        }
+    }
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1444,41 +1485,42 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[BP]": bumper_check,
     "[BL]": block_check,
     "[QD']": quad_prime_check,
-    "[SG]": (state, rule) => segment_check(state, rule as SegmentRule),
-    "[LK]": (state, rule) => link_check(state, rule as LinkRule),
-    "[LO]": (state, rule) => lotus_check(state, rule as LotusRule),
-    "[MR]": (state, rule) => metro_check(state, rule as MetroRule),
-    "[RF]": (state, rule) => reference_check(state, rule as ReferenceRule),
-    "[PR]": (state, rule) => prism_check(state, rule as PrismRule),
-    "[QT]": (state, rule) => quantum_check(state, rule as QuantumRule),
-    "[RG]": (state, rule) => range_check(state, rule as RangeRule),
-    "[SQ]": (state, rule) => sequence_check(state, rule as SequenceRule),
-    "[TM]": (state, rule) => temperature_check(state, rule as TemperatureRule),
-    "[PO]": (state, rule) => point_check(state, rule as PointRule),
-    "[ST]": (state, rule) => stencil_check(state, rule as StencilRule),
-    "[SR]": (state, rule) => stream_check(state, rule as StreamRule),
-    "[PA]": (state, rule) => pair_check(state, rule as PairRule),
-    "[IV]": (state, rule) => inversion_check(state, rule as InversionRule),
-    "[TR]": (state, rule) => trail_check(state, rule as TrailRule),
-    "[PD]": (state, rule) => product_check(state, rule as ProductRule),
-    "[BD]": (state, rule) => bridge_check(state, rule as BridgeRule),
-    "[EF]": (state, rule) => reflex_check(state, rule as ReflexRule),
-    "[AQ]": (state, rule) => aquarium_check(state, rule as AquariumRule),
-    "[MT]": (state, rule) => meta_check(state, rule as MetaRule),
-    "[B']": (state, rule) => box_prime_check(state, rule as BoxPrimeRule),
-    "[LK']": (state, rule) => link_prime_check(state, rule as LinkPrimeRule),
-    "[PR']": (state, rule) => prism_prime_check(state, rule as PrismPrimeRule),
-    "[LO']": (state, rule) => lotus_prime_check(state, rule as LotusPrimeRule),
-    "[SQ']": (state, rule) => sequence_prime_check(state, rule as SequencePrimeRule),
-    "[RG']": (state, rule) => range_prime_check(state, rule as RangePrimeRule),
-    "[TR']": (state, rule) => trail_prime_check(state, rule as TrailPrimeRule),
-    "[SG']": (state, rule) => segment_prime_check(state, rule as SegmentPrimeRule),
-    "[EP]": (state, rule) => epsilon_check(state, rule as EpsilonRule),
-    "[EP']": (state, rule) => epsilon_check(state, rule as EpsilonPrimeRule),
-    "[VT]": (state, rule) => vector_check(state, rule as VectorRule),
-    "[VT']": (state, rule) => vector_check(state, rule as VectorPrimeRule),
-    "[RT]": (state, rule) => root_check(state, rule as RootRule),
-    "[RT']": (state, rule) => root_check(state, rule as RootPrimeRule),
+    "[SG]": (board, rule) => segment_check(board, rule as SegmentRule),
+    "[LK]": (board, rule) => link_check(board, rule as LinkRule),
+    "[LO]": (board, rule) => lotus_check(board, rule as LotusRule),
+    "[MR]": (board, rule) => metro_check(board, rule as MetroRule),
+    "[RF]": (board, rule) => reference_check(board, rule as ReferenceRule),
+    "[PR]": (board, rule) => prism_check(board, rule as PrismRule),
+    "[QT]": (board, rule) => quantum_check(board, rule as QuantumRule),
+    "[RG]": (board, rule) => range_check(board, rule as RangeRule),
+    "[SQ]": (board, rule) => sequence_check(board, rule as SequenceRule),
+    "[TM]": (board, rule) => temperature_check(board, rule as TemperatureRule),
+    "[PO]": (board, rule) => point_check(board, rule as PointRule),
+    "[ST]": (board, rule) => stencil_check(board, rule as StencilRule),
+    "[SR]": (board, rule) => stream_check(board, rule as StreamRule),
+    "[PA]": (board, rule) => pair_check(board, rule as PairRule),
+    "[IV]": (board, rule) => inversion_check(board, rule as InversionRule),
+    "[TR]": (board, rule) => trail_check(board, rule as TrailRule),
+    "[PD]": (board, rule) => product_check(board, rule as ProductRule),
+    "[BD]": (board, rule) => bridge_check(board, rule as BridgeRule),
+    "[EF]": (board, rule) => reflex_check(board, rule as ReflexRule),
+    "[AQ]": (board, rule) => aquarium_check(board, rule as AquariumRule),
+    "[MT]": (board, rule) => meta_check(board, rule as MetaRule),
+    "[LI]": (board, rule) => liar_check(board, rule as LiarRule),
+    "[B']": (board, rule) => box_prime_check(board, rule as BoxPrimeRule),
+    "[LK']": (board, rule) => link_prime_check(board, rule as LinkPrimeRule),
+    "[PR']": (board, rule) => prism_prime_check(board, rule as PrismPrimeRule),
+    "[LO']": (board, rule) => lotus_prime_check(board, rule as LotusPrimeRule),
+    "[SQ']": (board, rule) => sequence_prime_check(board, rule as SequencePrimeRule),
+    "[RG']": (board, rule) => range_prime_check(board, rule as RangePrimeRule),
+    "[TR']": (board, rule) => trail_prime_check(board, rule as TrailPrimeRule),
+    "[SG']": (board, rule) => segment_prime_check(board, rule as SegmentPrimeRule),
+    "[EP]": (board, rule) => epsilon_check(board, rule as EpsilonRule),
+    "[EP']": (board, rule) => epsilon_check(board, rule as EpsilonPrimeRule),
+    "[VT]": (board, rule) => vector_check(board, rule as VectorRule),
+    "[VT']": (board, rule) => vector_check(board, rule as VectorPrimeRule),
+    "[RT]": (board, rule) => root_check(board, rule as RootRule),
+    "[RT']": (board, rule) => root_check(board, rule as RootPrimeRule),
 } as const;
 
 export function check_all(

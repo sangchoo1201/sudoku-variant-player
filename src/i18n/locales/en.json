@@ -62,5 +62,6 @@
 
   "rule.[B']": "Box': The two numbers in the upper-left corner of a box, in either order, represent the sums of the digits in the shaded and unshaded cells within that box.",
   "rule.[VT']": "Vector': If a cell containing a triangle has digit X, then the cell located X cells away in the direction the triangle points contains digit greater than X.",
-  "rule.[EP']": "Epsilon': All cells containing 5/6/7/8/9 form orthogonally connected regions of exactly 5 cells each."
+  "rule.[EP']": "Epsilon': All cells containing 5/6/7/8/9 form orthogonally connected regions of exactly 5 cells each.",
+  "rule.[LI]": "Liar: There are 9 'liars' among the clues, each indicating a digit that does 'not' belong in its cell. Each row and column contains exactly one liar."
 }
