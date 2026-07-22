@@ -33,7 +33,6 @@ const no_error: RuleCheckingResult = [true, []];
 function ErrorCollector() {
     const errors: PositionExtended[] = [];
     const unique = new Set<string>();
-    const encode = ([r, c]: Position) => `${r},${c}`;
 
     return {
         add(pos: Position) {
@@ -1472,6 +1471,40 @@ const liar_check: RuleCheckingFunction<LiarRule> = function (
     return errors.result();
 }
 
+const tapestry_check: PureCheckingFunction = function (board_getter: BoardGetter): RuleCheckingResult {
+    const errors = ErrorCollector();
+
+    for (const [a, b, c] of [[1, 2, 3], [4, 5, 6], [7, 8, 9]]) {
+        const visited = new Set<string>();
+        const condition = (pos: Position, allow_null: boolean = true) => {
+            const v = board_getter(pos);
+            return (allow_null && v === null) || v === a || v === b || v === c;
+        }
+        const bfs = generate_bfs(visited, condition, king_adjacent);
+
+        const cells: Position[] = [];
+        let done_bfs = false, error = false;
+        for (const pos of generate_positions()) {
+            if (!condition(pos, false)) continue;
+            cells.push(pos);
+            if (visited.has(encode(pos))) continue;
+
+            if (done_bfs) {
+                error = true;
+            } else {
+                bfs(pos);
+            }
+            done_bfs = true;
+        }
+
+        if (error) {
+            errors.add_all(cells);
+        }
+    }
+
+    return errors.result();
+}
+
 const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => RuleCheckingResult> = {
     "[Sudoku]": sudoku_check,
     "[R]": row_check,
@@ -1484,6 +1517,7 @@ const rule_checks: Record<RuleID, (board_getter: BoardGetter, rule: Rule) => Rul
     "[TP]": triplet_check,
     "[BP]": bumper_check,
     "[BL]": block_check,
+    "[TS]": tapestry_check,
     "[QD']": quad_prime_check,
     "[SG]": (board, rule) => segment_check(board, rule as SegmentRule),
     "[LK]": (board, rule) => link_check(board, rule as LinkRule),

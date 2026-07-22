@@ -602,6 +602,10 @@ const LiarRuleSchema = z.object({
 });
 export type LiarRule = z.infer<typeof LiarRuleSchema>;
 
+const TapestryRuleSchema = z.object({
+    id: z.literal("[TS]"),
+});
+
 const RuleSchema = z.discriminatedUnion("id", [
     SudokuRuleSchema,
     RowRuleSchema,
@@ -660,6 +664,8 @@ const RuleSchema = z.discriminatedUnion("id", [
     VectorPrimeRuleSchema,
     EpsilonPrimeRuleSchema,
     LiarRuleSchema,
+
+    TapestryRuleSchema,
 ]);
 
 export type Rule = z.infer<typeof RuleSchema>;
